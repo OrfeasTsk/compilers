@@ -3,15 +3,18 @@ package extras;
 public class VarInfo extends Info{
 
     private String type;
+    private int offset;
 
     public VarInfo(String name) {
         super(name);
         this.type = null;
+        this.offset = -1;
     }
 
     public VarInfo(String name, String type) {
         super(name);
         this.type = type;
+        this.offset = -1;
     }
 
     public boolean equals(VarInfo vInfo){
@@ -34,6 +37,7 @@ public class VarInfo extends Info{
 
     //GETTERS & SETTERS
 
+
     public String getType() {
         return this.type;
     }
@@ -41,4 +45,13 @@ public class VarInfo extends Info{
     public void setType(String type) {
         this.type = type;
     }
+
+    public int getOffset() {
+        return this.offset;
+    }
+
+    public void setOffset(int offset) {
+        this.offset = offset;
+    }
+    
 }

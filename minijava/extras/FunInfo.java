@@ -10,14 +10,16 @@ public class FunInfo extends Info{
     private int scopeIndex; // Scope index at previous scope 
     private Map<String, VarInfo> parameters;
     private String type;
-    private boolean overridden;
+    private FunInfo overridden;  // Function that is overriden by this function
+    private int offset;
 
     public FunInfo(int index, String name) {
         super(name);
         this.scopeIndex = index;
         this.type = null;
         this.parameters = new LinkedHashMap<>();
-        this.overridden = false;
+        this.overridden = null;
+        this.offset = -1;
     }
 
     public FunInfo(int index, String name, String type) {
@@ -25,7 +27,8 @@ public class FunInfo extends Info{
         this.scopeIndex = index;
         this.type = type;
         this.parameters = new LinkedHashMap<>();
-        this.overridden = false;
+        this.overridden = null;
+        this.offset = -1;
     }
 
     public FunInfo(int index, String name, String type, Map<String, VarInfo> parameters) {
@@ -33,7 +36,8 @@ public class FunInfo extends Info{
         this.scopeIndex = index;
         this.type = type;
         this.parameters = parameters;  
-        this.overridden = false;
+        this.overridden = null;
+        this.offset = -1;
     }
 
     public void addParameter(VarInfo parameter) throws SemanticError {
@@ -122,12 +126,20 @@ public class FunInfo extends Info{
         this.type = type;
     }
 
-    public boolean getOverridden() {
+    public FunInfo getOverridden() {
         return this.overridden;
     }
 
-    public void setOverridden(boolean overridden) {
+    public void setOverridden(FunInfo overridden) {
         this.overridden = overridden;
+    }
+
+    public int getOffset() {
+        return this.offset;
+    }
+
+    public void setOffset(int offset) {
+        this.offset = offset;
     }
     
 }

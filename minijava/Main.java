@@ -44,7 +44,7 @@ public class Main {
                 symTable.enter(globalScope);
                 PrintWriter writer = new PrintWriter(System.out);
                 for(ClassInfo cInfo: globalScope.getClasses().values()) // Accessing all classes from the global scope
-                    symTable.VTablePrint(cInfo, writer); // VTable offsets
+                    symTable.OffsetPrint(cInfo, writer); //  Offsets
                 writer.flush();
                 symTable.exit();
                 

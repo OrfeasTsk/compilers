@@ -180,7 +180,7 @@ public class SymbolTable {
                                 throw new SemanticError(str);
                             }
                             else{
-                                fInfo.setOverridden(true);
+                                fInfo.setOverridden(ancestorFun);
                                 break;
                             }
                         }
@@ -194,7 +194,7 @@ public class SymbolTable {
         }
     }
 
-    public void VTablePrint(ClassInfo cInfo, PrintWriter writer) {
+    public void OffsetPrint(ClassInfo cInfo, PrintWriter writer) {
 
         List<String> ancestorNames = cInfo.getAncestorNames();
  
@@ -209,6 +209,7 @@ public class SymbolTable {
         int offset = cInfo.getCurrVarOffset();
         for(VarInfo vInfo: classScope.getVariables().values()){
             writer.println(cInfo.getName() +"."+  vInfo.getName() + " : " + offset);
+            vInfo.setOffset(offset);
             if(vInfo.getType().equals("int"))
                 offset += 4;
             else if(vInfo.getType().equals("boolean"))
@@ -220,17 +221,20 @@ public class SymbolTable {
 
         offset = cInfo.getCurrFunOffset();
         for(FunInfo fInfo: classScope.getFunctions().values()){
-            boolean isStatic = false;
             if(fInfo.getName().equals("main")){  // Checking for the pseudo - static main
                 VarInfo vInfo = (VarInfo)(fInfo.getParameters().values().toArray()[0]);
                 if(vInfo.getType().equals("String[]"))
-                    isStatic = true;
+                    continue;
             }
             
-            if(fInfo.getOverridden() == false && isStatic == false){
+            FunInfo overridden = fInfo.getOverridden();
+            if(overridden == null){
                 writer.println(cInfo.getName() +"."+  fInfo.getName() + " : " + offset);
+                fInfo.setOffset(offset);
                 offset += 8;
             }
+            else
+                fInfo.setOffset(overridden.getOffset()); // Same offset as the overridden function
         }
         cInfo.setCurrFunOffset(offset);
     }
