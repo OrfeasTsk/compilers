@@ -1,0 +1,33 @@
+// FIRST+(expr) = {0,1,2,3,4,5,6,7,8,9,(}, FIRST(expr) = {0,1,2,3,4,5,6,7,8,9,(}, FOLLOW(expr) = {$,)}
+expr -> term termtail // FIRST+ = {0,1,2,3,4,5,6,7,8,9,(}
+
+// FIRST+(termtail) = {+,-,$,)}, FIRST(termtail) = {+,-,ε}, FOLLOW(termtail) = {$,)}
+termtail -> + term termtail  // FIRST+ = {+}
+	 |  - term termtail  // FIRST+ = {-}
+	 |  ε		     // FIRST+ = {$,)}
+
+// FIRST+(term) = {0,1,2,3,4,5,6,7,8,9,(}, FIRST(term) = {0,1,2,3,4,5,6,7,8,9,(}, FOLLOW(term) = {+,-,$,)}
+term -> factor factortail // FIRST+ = {0,1,2,3,4,5,6,7,8,9,(}
+
+// FIRST+(factortail) = {*,+,-,$,)}, FIRST(factortail) = {*,ε}, FOLLOW(factortail) = {+,-,$,)}
+factortail -> ** factor factortail // FIRST+ = {*}
+	   |  ε			   // FIRST+ = {+,-,$,)}
+
+// FIRST+(factor) = {0,1,2,3,4,5,6,7,8,9,(}, FIRST(factor) = {0,1,2,3,4,5,6,7,8,9,(}, FOLLOW(factor) = {+,-,*,$,)}
+factor -> num   // FIRST+ = {0,1,2,3,4,5,6,7,8,9}
+       | (expr) // FIRST+ = {(}
+
+// FIRST+(num) = {0,1,2,3,4,5,6,7,8,9}, FIRST(num) = {0,1,2,3,4,5,6,7,8,9}, FOLLOW(num) = {+,-,*,$,)}
+num -> nzerodigit restnum // FIRST+ = {1,2,3,4,5,6,7,8,9}
+    |  0		  // FIRST+ = {0}
+
+// FIRST+(restnum) = {0,1,2,3,4,5,6,7,8,9,+,-,*,$,)}, FIRST(restnum) = {0,1,2,3,4,5,6,7,8,9,ε}, FOLLOW(restnum) = {+,-,*,$,)} 
+restnum -> digit restnum // FIRST+ = {0,1,2,3,4,5,6,7,8,9}
+	|  ε		 // FIRST+ = {+,-,*,$,)}
+
+// FIRST+(nzerodigit) = {1,2,3,4,5,6,7,8,9}, FIRST(nzerodigit) = {1,2,3,4,5,6,7,8,9}, FOLLOW(nzerodigit) = {0,1,2,3,4,5,6,7,8,9,+,-,*,$,)}
+nzerodigit -> 1|...|9 
+
+// FIRST+(digit) = {0,1,2,3,4,5,6,7,8,9}, FIRST(digit) = {0,1,2,3,4,5,6,7,8,9}, FOLLOW(digit) = {0,1,2,3,4,5,6,7,8,9,+,-,*,$,)}
+digit -> 0|....|9
+

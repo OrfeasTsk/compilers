@@ -1,0 +1,129 @@
+/**
+ *  Package and Import Specifications
+ */
+import java_cup.runtime.*;
+
+/**
+ *  Usercode Components
+ */
+
+action code {: 
+
+Boolean expr = false; // Flag for prints
+
+:};
+
+parser code {:
+    // Connect this parser to a scanner!
+    Scanner s;    
+    Parser(Scanner s){ this.s=s; }
+:};
+
+/* define how to connect to the scanner! */
+scan with {: return s.next_token(); :};
+
+/**
+ *  Symbol Lists
+ */
+
+/* Terminals (tokens returned by the scanner). */
+terminal            COMMA, PLUS, LPAREN, RPAREN , LCBR, RCBR, RPAREN_LCBR, IF, ELSE , PREFIX, SUFFIX;
+terminal String     ID, STRING_LITERAL;
+
+/*  Non terminals */
+non terminal           program;
+non terminal String    outfuncall, outexpr, outcond, nextoutexpr, outcall_arglist, outcall_args, outcall_arg, fundecl, nextfundecl, decl_args, decl_arglist, funbody, funcall, call_args, call_arglist, call_arg, expr ,cond;
+
+/**
+ *  Precedence Declarations
+ */
+precedence right IF;
+precedence left PLUS;
+
+
+/**
+ *  The Grammar Rules
+ */
+
+
+program ::=  fundecl:fd nextfundecl:nfd       {: if(!expr){ System.out.println("public class Main {"); System.out.printf("\tpublic static void main(String[] args){\n\t");} if(nfd == null || "".equals(nfd)) System.out.printf("}\n%s\n}\n",fd); else System.out.printf("}\n%s\n%s\n}\n",fd,nfd);  :}  /* Starting with a function declaration (main is included if the function declaration is not followed by an expression) */
+            | outexpr:e nextoutexpr:ne        {: System.out.println("public class Main {"); System.out.printf("\tpublic static void main(String[] args) {\n\t\tSystem.out.println(%s);\n\t%s}\n}\n",e,ne); :}  /* Starting with an outer expression */
+            |                                 {: System.out.println("public class Main {"); System.out.printf("\tpublic static void main(String[] args) {\n\t}\n}\n"); :}  /* Empty program */
+	        ;
+
+nextfundecl ::=  fundecl:fd nextfundecl:nfd    {: if(nfd == null || "".equals(nfd)) RESULT = String.format("%s",fd); else RESULT = String.format("%s\n%s",fd,nfd); :}  /* A Function declaration can follow a function declaration */
+               | outexpr:e nextoutexpr:ne      {: System.out.println("public class Main {"); System.out.printf("\tpublic static void main(String[] args) {\n\t\tSystem.out.println(%s);\n\t%s",e,ne); expr = true; :}  /* An outer expression can follow a function declaration */
+               |                               {: RESULT = ""; :}
+               ;
+
+nextoutexpr ::= outexpr:e nextoutexpr:ne       {: RESULT = String.format("\tSystem.out.println(%s);\n\t%s",e,ne); :}  /* An outer expression can follow an outer expression */
+               |                               {: RESULT = ""; :}
+               ;
+
+
+fundecl ::= ID:id LPAREN decl_args:args RPAREN_LCBR funbody:fb    {: RESULT = String.format("\tpublic static String %s(%s) {%s", id, args, fb); :}  /* A function declaration can be an identifier followed by a left parenthesis and some arguments and then a right parenthesis, a left bracket and a function body  */
+           ;
+
+decl_args ::= decl_arglist:argl                {: RESULT = String.format("%s", argl); :}  /* Non zero number of arguments */
+             |                                 {: RESULT = ""; :}  /* No arguments */
+             ;
+
+decl_arglist ::= decl_arglist:argl COMMA ID:id   {: RESULT = String.format("%s, String %s", argl, id); :}  /* Argument list */ 
+                | ID:id                          {: RESULT = String.format("String %s", id); :}  /* Only identifiers as arguments in declarations */                  
+                ;
+
+funbody  ::=  expr:e RCBR                        {: RESULT = String.format("\n\t\treturn %s;\n\t}", e); :}  /* Function body can contain a expression */ 
+            ;
+
+outexpr ::=  IF LPAREN outcond:c RPAREN outexpr:e1 ELSE outexpr:e2  {: RESULT = String.format("(%s ? %s : %s)",c,e1,e2); :}  /* Outer expression can be an IF-ELSE expression including an outer condition and two outer expressions */
+            | outexpr:e1 PLUS outexpr:e2                            {: RESULT = String.format("%s + %s", e1, e2); :}  /* Outer expression can be a concatenation of two outer expressions */
+            | outfuncall:ofc                                        {: RESULT = String.format("%s", ofc); :}  /* Outer expression can be an outer function call */
+            | STRING_LITERAL:s                                      {: RESULT = String.format("%s", s); :}  /* Outer expression can be a string */
+            ;
+
+outcond   ::=  outexpr:e1 PREFIX outexpr:e2                        {: RESULT = String.format("(%s).startsWith(%s)",e2,e1); :}  /* Outer condition including the preffix keyword */     
+             |  outexpr:e1 SUFFIX outexpr:e2                       {: RESULT = String.format("(%s).endsWith(%s)",e2,e1); :}  /* Outer condition including the suffix keyword */  
+             ;
+
+outfuncall ::= ID:id LPAREN outcall_args:args RPAREN    {: RESULT = String.format("%s(%s)", id, args); :}  /* An outer function call can be an identifier followed by a left parenthesis and some arguments and then a right parenthesis */
+              ;
+
+outcall_args ::= outcall_arglist:argl            {: RESULT = String.format("%s", argl); :}  /* Non zero number of arguments */
+                |                                {: RESULT = ""; :}  /* No arguments */
+                ;
+
+outcall_arglist ::= outcall_arglist:argl COMMA outcall_arg:arg   {: RESULT = String.format("%s, %s", argl, arg); :}  /* Argument list */ 
+                   | outcall_arg:arg                             {: RESULT = String.format("%s", arg); :}                              
+                   ;
+
+outcall_arg ::= outexpr:e             {: RESULT = String.format("%s", e); :}  /* Only outer expressions as arguments in outer function calls */
+               ;
+
+expr   ::=  IF LPAREN cond:c RPAREN expr:e1 ELSE expr:e2    {: RESULT = String.format("(%s ? %s : %s)",c,e1,e2); :}  /* Expression can be an IF-ELSE expression including a condition and two expressions */
+          | expr:e1 PLUS expr:e2                            {: RESULT = String.format("%s + %s", e1, e2); :}  /* Expression can be a concatenation of two expressions */
+          | funcall:fc                                      {: RESULT = String.format("%s", fc); :}  /* Expression can be a function call */
+          | ID:id                                           {: RESULT = String.format("%s", id); :}  /* Expression can be an identifier */
+          | STRING_LITERAL:s                                {: RESULT = String.format("%s", s); :}  /* Expression can be a string */
+          ;
+
+cond   ::=  expr:e1 PREFIX expr:e2                        {: RESULT = String.format("(%s).startsWith(%s)",e2,e1); :}  /* Condition including the preffix keyword */       
+          | expr:e1 SUFFIX expr:e2                        {: RESULT = String.format("(%s).endsWith(%s)",e2,e1); :}  /* Condition including the suffix keyword */  
+          ;
+
+funcall ::= ID:id LPAREN call_args:args RPAREN    {: RESULT = String.format("%s(%s)", id, args); :}  /* A function call can be an identifier followed by a left parenthesis and some arguments and then a right parenthesis */
+           ;
+
+call_args ::= call_arglist:argl            {: RESULT = String.format("%s", argl); :}  /* Non zero number of arguments */
+             |                             {: RESULT = ""; :}  /* No arguments */
+             ;
+
+call_arglist ::=  call_arglist:argl COMMA call_arg:arg   {: RESULT = String.format("%s, %s", argl, arg); :}  /* Argument list */ 
+                | call_arg:arg                           {: RESULT = String.format("%s", arg); :}                              
+                ;
+
+call_arg ::= expr:e   {: RESULT = String.format("%s", e); :}  /* Only expressions as arguments in outer function calls */
+            ;
+
+
+
+
