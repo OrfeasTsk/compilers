@@ -9,6 +9,7 @@ public class ClassInfo extends Info {
 
     private int scopeIndex; // Scope index at previous scope 
     private List<String> ancestorNames;
+    private VTable vTable;
     private int currVarOffset;
     private int currFunOffset;
 
@@ -16,6 +17,7 @@ public class ClassInfo extends Info {
         super(name);
         this.scopeIndex = index;
         this.ancestorNames = new ArrayList<>();
+        this.vTable = null;
         this.currVarOffset = 0;
         this.currFunOffset = 0;
     }
@@ -25,6 +27,7 @@ public class ClassInfo extends Info {
         this.scopeIndex = index;
         this.ancestorNames = new ArrayList<>();
         this.ancestorNames.add(parentName);
+        this.vTable = null;
         this.currVarOffset = 0;
         this.currFunOffset = 0;
     }
@@ -67,6 +70,14 @@ public class ClassInfo extends Info {
         this.ancestorNames = ancestorNames;
     }
 
+    public VTable getVTable() {
+        return this.vTable;
+    }
+
+    public void setVTable(VTable vTable) {
+        this.vTable = vTable;
+    }
+
     public int getCurrVarOffset() {
         return this.currVarOffset;
     }
@@ -82,5 +93,5 @@ public class ClassInfo extends Info {
     public void setCurrFunOffset(int currFunOffset) {
         this.currFunOffset = currFunOffset;
     }
-      
+
 }

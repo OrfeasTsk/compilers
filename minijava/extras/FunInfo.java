@@ -99,6 +99,18 @@ public class FunInfo extends Info{
         return true;
     }
 
+    public String getIRType() {
+
+        if(this.type.equals("int"))
+            return "i32";
+        else if(this.type.equals("boolean"))
+            return "i1";
+        else if(this.type.equals("int[]"))
+            return "i32*";
+        else
+            return "i8"; 
+    }
+
     //GETTERS & SETTERS
 
 

@@ -3,8 +3,6 @@ import visitor.*;
 import extras.*;
 
 import java.util.Map;
-
-
 import java.util.Iterator;
 
 import java.io.*;
@@ -45,11 +43,10 @@ public class Main {
                 writer.flush();
                 symTable.exit();
 
-                PrintWriter IRWriter = new PrintWriter(System.out);
-                IRInitializer irInitializer = new IRInitializer(globalScope, symTable, IRWriter); // Initialization of IR (vtable creation, common constants, common declarations and common definitions)
-                root.accept(irInitializer, null);
+                PrintWriter irWriter = new PrintWriter(System.out);
+                IRCreator irCreator= new IRCreator(globalScope, symTable, irWriter); // Initialization of IR (vtable creation, common constants, common declarations and common definitions)
+                root.accept(irCreator, null);
 
-                
             }
             catch(ParseException ex){
                 System.out.println(ex.getMessage());
@@ -1144,18 +1141,19 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
     }
 }
 
-class IRInitializer extends GJDepthFirst<Void, Object> {
+class IRCreator extends GJDepthFirst<Info, Object> {
 
     Scope globalScope;
     SymbolTable symTable;
     PrintWriter writer;
 
 
-    public IRInitializer(Scope globalScope, SymbolTable symTable, PrintWriter writer) {
+    public IRCreator(Scope globalScope, SymbolTable symTable, PrintWriter writer) {
         this.globalScope = globalScope;
         this.symTable = symTable;
         this.writer = writer;
     }
+
 
     /**
     * f0 -> MainClass()
@@ -1163,142 +1161,66 @@ class IRInitializer extends GJDepthFirst<Void, Object> {
     * f2 -> <EOF>
     */
     @Override
-    public Void visit(Goal n, Object obj) throws Exception {
+    public Info visit(Goal n, Object obj) throws Exception {
 
         this.symTable.enter(this.globalScope); // Global scope
+        this.IRInit();
         n.f0.accept(this, null);
         for(Node node: n.f1.nodes)
             node.accept(this, null);
-        
-        String str = "\n\ndeclare i8* @calloc(i32, i32)\ndeclare i32 @printf(i8*, ...)\ndeclare void @exit(i32)\n\n@_cint = constant [4 x i8] c\"%d\\0a\\00\"\n";
-        str += "@_cOOB = constant [15 x i8] c\"Out of bounds\\0a\\00\"\ndefine void @print_int(i32 %i) {\n    %_str = bitcast [4 x i8]* @_cint to i8*\n    ";
-        str += "call i32 (i8*, ...) @printf(i8* %_str, i32 %i)\n    ret void\n}\n\ndefine void @throw_oob() {\n    %_str = bitcast [15 x i8]* @_cOOB to i8*\n    ";
-        str += "call i32 (i8*, ...) @printf(i8* %_str)\n    call void @exit(i32 1)\n    ret void\n}\n";
-        this.writer.write(str);
-        this.writer.flush();
         this.symTable.exit(); // Global scope
 
         return null;
     }
 
-    /**
-    * f0 -> "class"
-    * f1 -> Identifier()
-    * f2 -> "{"
-    * f3 -> "public"
-    * f4 -> "static"
-    * f5 -> "void"
-    * f6 -> "main"
-    * f7 -> "("
-    * f8 -> "String"
-    * f9 -> "["
-    * f10 -> "]"
-    * f11 -> Identifier()
-    * f12 -> ")"
-    * f13 -> "{"
-    * f14 -> ( VarDeclaration() )*
-    * f15 -> ( Statement() )*
-    * f16 -> "}"
-    * f17 -> "}"
-    */
-    @Override
-    public Void visit(MainClass n, Object obj) throws Exception {
 
-        this.symTable.enter();  // MainClass scope
-        Scope classScope = this.symTable.getCurrScope();
-        String className = classScope.getInfo().getName();
-        String str = "@." + className + "_vtable = global [0 x i8*] []\n"; // MainClass has only the pseudo static main function which cannot be part of vtable
-        this.writer.write(str);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public void IRInit() throws Exception {
+
+        Iterator<ClassInfo> classIt = this.globalScope.getClasses().values().iterator();
+        ClassInfo cInfo = classIt.next(); // MainClass
+        String out = "@." + cInfo.getName() + "_vtable = global [0 x i8*] []\n"; // MainClass has only the pseudo static main function which cannot be part of vtable
+        this.writer.write(out);
         this.writer.flush();
-        this.symTable.exit(); // MainClass scope
-        
-        return null;
-    }
-
-    /**
-    * f0 -> "class"
-    * f1 -> Identifier()
-    * f2 -> "{"
-    * f3 -> ( VarDeclaration() )*
-    * f4 -> ( MethodDeclaration() )*
-    * f5 -> "}"
-    */
-    @Override
-    public Void visit(ClassDeclaration n, Object obj) throws Exception {
-
-        this.symTable.enter(); // ClassDeclaration scope
-        String str = getGlobalVTDecl();
-        this.writer.write(str);
-        this.writer.flush();
-        this.symTable.exit(); // ClassDeclaration scope
-        
-        return null;
-    }
-
-    /**
-     * f0 -> "class"
-    * f1 -> Identifier()
-    * f2 -> "extends"
-    * f3 -> Identifier()
-    * f4 -> "{"
-    * f5 -> ( VarDeclaration() )*
-    * f6 -> ( MethodDeclaration() )*
-    * f7 -> "}"
-    */
-    @Override
-    public Void visit(ClassExtendsDeclaration n, Object obj) throws Exception {
-        
-        this.symTable.enter(); // ClassExtendsDeclaration scope
-        String str = getGlobalVTDecl();
-        this.writer.write(str);
-        this.writer.flush();
-        this.symTable.exit(); // ClassExtendsDeclaration scope
-
-        return null;
-    }
-
-
-    public String getGlobalVTDecl(){
-
-        Scope classScope = this.symTable.getCurrScope();
-        String str = null;
-        if(classScope.getType() == 'c'){
-            String className = classScope.getInfo().getName();
-            int funNum = classScope.getFunctions().size();
-            str = "@." + className + "_vtable = global [" + funNum + " x i8*] [";
-            
-            if(funNum > 0){ // if class has at least one function
-                Iterator<FunInfo> it = classScope.getFunctions().values().iterator();
-                FunInfo fInfo = it.next();
-                for(int i = 0; i < funNum - 1; i++){
-                    str += "i8* bitcast (" + getIRType(fInfo.getType()) + " (i8*";
-                    for(VarInfo vInfo : fInfo.getParameters().values())
-                        str += "," + getIRType(vInfo.getType());
-                    str += ")* @" + className + "." + fInfo.getName() + " to i8*), ";
-                    fInfo = it.next();
-                }
-
-                str += "i8* bitcast (" + getIRType(fInfo.getType()) + " (i8*";
-                for(VarInfo vInfo : fInfo.getParameters().values())
-                    str += "," + getIRType(vInfo.getType());
-                str += ")* @" + className + "." + fInfo.getName() + " to i8*)";
-            }
-            str += "]\n";
+        while(classIt.hasNext()){ 
+            cInfo = classIt.next();
+            this.symTable.VTableCreate(cInfo); 
+            this.writer.write(cInfo.getVTable().toString());
+            this.writer.flush();
         }
 
-        return str;
-    }
-
-    public static String getIRType(String type) {
-
-        if(type.equals("int"))
-            return "i32";
-        else if(type.equals("boolean"))
-            return "i1";
-        else if(type.equals("int[]"))
-            return "i32*";
-        else
-            return "i8"; 
+        //Common constants, declarations and definitions
+        out = "\n\ndeclare i8* @calloc(i32, i32)\ndeclare i32 @printf(i8*, ...)\ndeclare void @exit(i32)\n\n@_cint = constant [4 x i8] c\"%d\\0a\\00\"\n";
+        out += "@_cOOB = constant [15 x i8] c\"Out of bounds\\0a\\00\"\ndefine void @print_int(i32 %i) {\n    %_str = bitcast [4 x i8]* @_cint to i8*\n    ";
+        out += "call i32 (i8*, ...) @printf(i8* %_str, i32 %i)\n    ret void\n}\n\ndefine void @throw_oob() {\n    %_str = bitcast [15 x i8]* @_cOOB to i8*\n    ";
+        out += "call i32 (i8*, ...) @printf(i8* %_str)\n    call void @exit(i32 1)\n    ret void\n}\n";
+        this.writer.write(out);
+        this.writer.flush();    
+        
     }
 
 }

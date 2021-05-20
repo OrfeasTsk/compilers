@@ -1,6 +1,6 @@
 package extras;
 
-public class VarInfo extends Info{
+public class VarInfo extends Info {
 
     private String type;
     private int offset;
@@ -33,6 +33,18 @@ public class VarInfo extends Info{
         if(!this.type.equals("int") && !this.type.equals("boolean") && !this.type.equals("int[]") && !this.type.equals("String[]") && !this.type.equals("void"))
             return false;
         return true;
+    }
+
+    public String getIRType() {
+
+        if(this.type.equals("int"))
+            return "i32";
+        else if(this.type.equals("boolean"))
+            return "i1";
+        else if(this.type.equals("int[]"))
+            return "i32*";
+        else
+            return "i8"; 
     }
 
     //GETTERS & SETTERS

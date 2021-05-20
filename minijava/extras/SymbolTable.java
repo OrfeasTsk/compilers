@@ -1,5 +1,6 @@
 package extras;
 
+import java.util.Map;
 import java.util.List;
 import java.io.PrintWriter;
 
@@ -327,7 +328,7 @@ public class SymbolTable {
         }           
     }
 
-    public void checkStaticCont() throws SemanticError{
+    public void checkStaticCont() throws SemanticError {
         Scope temp = this.currScope;
 
         while(temp != null){
@@ -340,6 +341,32 @@ public class SymbolTable {
                    
             temp = temp.getParentScope();
         }
+    }
+
+
+    public void VTableCreate(ClassInfo cInfo) {
+
+        Scope classScope = this.currScope.getChild(cInfo.getScopeIndex());
+        List<String> ancestorNames = cInfo.getAncestorNames();
+        VTable vTable = null;
+ 
+        if(ancestorNames.size() > 0){
+            ClassInfo parentInfo = this.lookupClass(cInfo.getParentName());
+            VTable parVTable = parentInfo.getVTable();
+            if(parVTable != null)
+                vTable = parVTable.copy();
+        }
+
+        if(vTable == null)
+            vTable = new VTable(cInfo);
+        else
+            vTable.setClassInfo(cInfo);
+
+        for(Map.Entry<String, FunInfo> entry : classScope.getFunctions().entrySet())
+            vTable.addFunction(entry.getKey(), entry.getValue());
+
+        cInfo.setVTable(vTable);
+       
     }
 
     // GETTERS & SETTERS
