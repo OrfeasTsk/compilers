@@ -45,8 +45,9 @@ public class Main {
                 writer.flush();
                 symTable.exit();
 
-                IRCreator irCreator = new IRCreator(globalScope, symTable);
-                root.accept(irCreator, null);
+                PrintWriter IRWriter = new PrintWriter(System.out);
+                IRInitializer irInitializer = new IRInitializer(globalScope, symTable, IRWriter); // Initialization of IR (vtable creation, common constants, common declarations and common definitions)
+                root.accept(irInitializer, null);
 
                 
             }
@@ -1143,19 +1144,17 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
     }
 }
 
-class IRCreator extends GJDepthFirst<Info, Object>{
+class IRInitializer extends GJDepthFirst<Void, Object> {
 
     Scope globalScope;
     SymbolTable symTable;
-    int regCounter;
     PrintWriter writer;
 
 
-    public IRCreator(Scope globalScope,  SymbolTable symTable){
+    public IRInitializer(Scope globalScope, SymbolTable symTable, PrintWriter writer) {
         this.globalScope = globalScope;
         this.symTable = symTable;
-        this.regCounter = 0;
-        this.writer = new PrintWriter(System.out);
+        this.writer = writer;
     }
 
     /**
@@ -1164,12 +1163,19 @@ class IRCreator extends GJDepthFirst<Info, Object>{
     * f2 -> <EOF>
     */
     @Override
-    public Info visit(Goal n, Object obj) throws Exception {
+    public Void visit(Goal n, Object obj) throws Exception {
 
         this.symTable.enter(this.globalScope); // Global scope
         n.f0.accept(this, null);
         for(Node node: n.f1.nodes)
             node.accept(this, null);
+        
+        String str = "\n\ndeclare i8* @calloc(i32, i32)\ndeclare i32 @printf(i8*, ...)\ndeclare void @exit(i32)\n\n@_cint = constant [4 x i8] c\"%d\\0a\\00\"\n";
+        str += "@_cOOB = constant [15 x i8] c\"Out of bounds\\0a\\00\"\ndefine void @print_int(i32 %i) {\n    %_str = bitcast [4 x i8]* @_cint to i8*\n    ";
+        str += "call i32 (i8*, ...) @printf(i8* %_str, i32 %i)\n    ret void\n}\n\ndefine void @throw_oob() {\n    %_str = bitcast [15 x i8]* @_cOOB to i8*\n    ";
+        str += "call i32 (i8*, ...) @printf(i8* %_str)\n    call void @exit(i32 1)\n    ret void\n}\n";
+        this.writer.write(str);
+        this.writer.flush();
         this.symTable.exit(); // Global scope
 
         return null;
@@ -1196,7 +1202,7 @@ class IRCreator extends GJDepthFirst<Info, Object>{
     * f17 -> "}"
     */
     @Override
-    public ExprInfo visit(MainClass n, Object obj) throws Exception {
+    public Void visit(MainClass n, Object obj) throws Exception {
 
         this.symTable.enter();  // MainClass scope
         Scope classScope = this.symTable.getCurrScope();
@@ -1204,10 +1210,6 @@ class IRCreator extends GJDepthFirst<Info, Object>{
         String str = "@." + className + "_vtable = global [0 x i8*] []\n"; // MainClass has only the pseudo static main function which cannot be part of vtable
         this.writer.write(str);
         this.writer.flush();
-        this.symTable.enter();  // main() scope
-        for(Node node: n.f15.nodes)
-           node.accept(this, null);
-        this.symTable.exit(); // main() scope
         this.symTable.exit(); // MainClass scope
         
         return null;
@@ -1222,15 +1224,12 @@ class IRCreator extends GJDepthFirst<Info, Object>{
     * f5 -> "}"
     */
     @Override
-    public ExprInfo visit(ClassDeclaration n, Object obj) throws Exception {
+    public Void visit(ClassDeclaration n, Object obj) throws Exception {
 
         this.symTable.enter(); // ClassDeclaration scope
-        Scope classScope = this.symTable.getCurrScope();
-        String str = getGlobalVTDecl(classScope);
+        String str = getGlobalVTDecl();
         this.writer.write(str);
         this.writer.flush();
-        for(Node node: n.f4.nodes)
-            node.accept(this, null);
         this.symTable.exit(); // ClassDeclaration scope
         
         return null;
@@ -1247,44 +1246,45 @@ class IRCreator extends GJDepthFirst<Info, Object>{
     * f7 -> "}"
     */
     @Override
-    public ExprInfo visit(ClassExtendsDeclaration n, Object obj) throws Exception {
+    public Void visit(ClassExtendsDeclaration n, Object obj) throws Exception {
         
         this.symTable.enter(); // ClassExtendsDeclaration scope
-        Scope classScope = this.symTable.getCurrScope();
-        String str = getGlobalVTDecl(classScope);
+        String str = getGlobalVTDecl();
         this.writer.write(str);
         this.writer.flush();
-        for(Node node: n.f6.nodes)
-            node.accept(this, null);
         this.symTable.exit(); // ClassExtendsDeclaration scope
 
         return null;
     }
 
 
-    public static String getGlobalVTDecl(Scope classScope){
+    public String getGlobalVTDecl(){
 
-        String className = classScope.getInfo().getName();
-        int funNum = classScope.getFunctions().size();
-        String str = "@." + className + "_vtable = global [" + funNum + " x i8*] [";
-        
-        if(funNum > 0){ // if class has at least one function
-            Iterator<FunInfo> it = classScope.getFunctions().values().iterator();
-            FunInfo fInfo = it.next();
-            for(int i = 0; i < funNum - 1; i++){
+        Scope classScope = this.symTable.getCurrScope();
+        String str = null;
+        if(classScope.getType() == 'c'){
+            String className = classScope.getInfo().getName();
+            int funNum = classScope.getFunctions().size();
+            str = "@." + className + "_vtable = global [" + funNum + " x i8*] [";
+            
+            if(funNum > 0){ // if class has at least one function
+                Iterator<FunInfo> it = classScope.getFunctions().values().iterator();
+                FunInfo fInfo = it.next();
+                for(int i = 0; i < funNum - 1; i++){
+                    str += "i8* bitcast (" + getIRType(fInfo.getType()) + " (i8*";
+                    for(VarInfo vInfo : fInfo.getParameters().values())
+                        str += "," + getIRType(vInfo.getType());
+                    str += ")* @" + className + "." + fInfo.getName() + " to i8*), ";
+                    fInfo = it.next();
+                }
+
                 str += "i8* bitcast (" + getIRType(fInfo.getType()) + " (i8*";
                 for(VarInfo vInfo : fInfo.getParameters().values())
                     str += "," + getIRType(vInfo.getType());
-                str += ")* @" + className + "." + fInfo.getName() + " to i8*), ";
-                fInfo = it.next();
+                str += ")* @" + className + "." + fInfo.getName() + " to i8*)";
             }
-
-            str += "i8* bitcast (" + getIRType(fInfo.getType()) + " (i8*";
-            for(VarInfo vInfo : fInfo.getParameters().values())
-                str += "," + getIRType(vInfo.getType());
-            str += ")* @" + className + "." + fInfo.getName() + " to i8*)";
+            str += "]\n";
         }
-        str += "]\n";
 
         return str;
     }
