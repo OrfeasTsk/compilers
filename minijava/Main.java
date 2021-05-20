@@ -2,11 +2,8 @@ import syntaxtree.*;
 import visitor.*;
 import extras.*;
 
-import java.util.List;
-import java.util.ArrayList;
 import java.util.Map;
 
-import javax.print.DocFlavor.STRING;
 
 import java.util.Iterator;
 
@@ -47,6 +44,10 @@ public class Main {
                     symTable.OffsetPrint(cInfo, writer); //  Offsets
                 writer.flush();
                 symTable.exit();
+
+                IRCreator irCreator = new IRCreator(globalScope, symTable);
+                root.accept(irCreator, null);
+
                 
             }
             catch(ParseException ex){
@@ -1140,4 +1141,164 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
 
         return true;
     }
+}
+
+class IRCreator extends GJDepthFirst<Info, Object>{
+
+    Scope globalScope;
+    SymbolTable symTable;
+    int regCounter;
+    PrintWriter writer;
+
+
+    public IRCreator(Scope globalScope,  SymbolTable symTable){
+        this.globalScope = globalScope;
+        this.symTable = symTable;
+        this.regCounter = 0;
+        this.writer = new PrintWriter(System.out);
+    }
+
+    /**
+    * f0 -> MainClass()
+    * f1 -> ( TypeDeclaration() )*
+    * f2 -> <EOF>
+    */
+    @Override
+    public Info visit(Goal n, Object obj) throws Exception {
+
+        this.symTable.enter(this.globalScope); // Global scope
+        n.f0.accept(this, null);
+        for(Node node: n.f1.nodes)
+            node.accept(this, null);
+        this.symTable.exit(); // Global scope
+
+        return null;
+    }
+
+    /**
+    * f0 -> "class"
+    * f1 -> Identifier()
+    * f2 -> "{"
+    * f3 -> "public"
+    * f4 -> "static"
+    * f5 -> "void"
+    * f6 -> "main"
+    * f7 -> "("
+    * f8 -> "String"
+    * f9 -> "["
+    * f10 -> "]"
+    * f11 -> Identifier()
+    * f12 -> ")"
+    * f13 -> "{"
+    * f14 -> ( VarDeclaration() )*
+    * f15 -> ( Statement() )*
+    * f16 -> "}"
+    * f17 -> "}"
+    */
+    @Override
+    public ExprInfo visit(MainClass n, Object obj) throws Exception {
+
+        this.symTable.enter();  // MainClass scope
+        Scope classScope = this.symTable.getCurrScope();
+        String className = classScope.getInfo().getName();
+        String str = "@." + className + "_vtable = global [0 x i8*] []\n"; // MainClass has only the pseudo static main function which cannot be part of vtable
+        this.writer.write(str);
+        this.writer.flush();
+        this.symTable.enter();  // main() scope
+        for(Node node: n.f15.nodes)
+           node.accept(this, null);
+        this.symTable.exit(); // main() scope
+        this.symTable.exit(); // MainClass scope
+        
+        return null;
+    }
+
+    /**
+    * f0 -> "class"
+    * f1 -> Identifier()
+    * f2 -> "{"
+    * f3 -> ( VarDeclaration() )*
+    * f4 -> ( MethodDeclaration() )*
+    * f5 -> "}"
+    */
+    @Override
+    public ExprInfo visit(ClassDeclaration n, Object obj) throws Exception {
+
+        this.symTable.enter(); // ClassDeclaration scope
+        Scope classScope = this.symTable.getCurrScope();
+        String str = getGlobalVTDecl(classScope);
+        this.writer.write(str);
+        this.writer.flush();
+        for(Node node: n.f4.nodes)
+            node.accept(this, null);
+        this.symTable.exit(); // ClassDeclaration scope
+        
+        return null;
+    }
+
+    /**
+     * f0 -> "class"
+    * f1 -> Identifier()
+    * f2 -> "extends"
+    * f3 -> Identifier()
+    * f4 -> "{"
+    * f5 -> ( VarDeclaration() )*
+    * f6 -> ( MethodDeclaration() )*
+    * f7 -> "}"
+    */
+    @Override
+    public ExprInfo visit(ClassExtendsDeclaration n, Object obj) throws Exception {
+        
+        this.symTable.enter(); // ClassExtendsDeclaration scope
+        Scope classScope = this.symTable.getCurrScope();
+        String str = getGlobalVTDecl(classScope);
+        this.writer.write(str);
+        this.writer.flush();
+        for(Node node: n.f6.nodes)
+            node.accept(this, null);
+        this.symTable.exit(); // ClassExtendsDeclaration scope
+
+        return null;
+    }
+
+
+    public static String getGlobalVTDecl(Scope classScope){
+
+        String className = classScope.getInfo().getName();
+        int funNum = classScope.getFunctions().size();
+        String str = "@." + className + "_vtable = global [" + funNum + " x i8*] [";
+        
+        if(funNum > 0){ // if class has at least one function
+            Iterator<FunInfo> it = classScope.getFunctions().values().iterator();
+            FunInfo fInfo = it.next();
+            for(int i = 0; i < funNum - 1; i++){
+                str += "i8* bitcast (" + getIRType(fInfo.getType()) + " (i8*";
+                for(VarInfo vInfo : fInfo.getParameters().values())
+                    str += "," + getIRType(vInfo.getType());
+                str += ")* @" + className + "." + fInfo.getName() + " to i8*), ";
+                fInfo = it.next();
+            }
+
+            str += "i8* bitcast (" + getIRType(fInfo.getType()) + " (i8*";
+            for(VarInfo vInfo : fInfo.getParameters().values())
+                str += "," + getIRType(vInfo.getType());
+            str += ")* @" + className + "." + fInfo.getName() + " to i8*)";
+        }
+        str += "]\n";
+
+        return str;
+    }
+
+    public static String getIRType(String type) {
+
+        if(type.equals("int"))
+            return "i32";
+        else if(type.equals("boolean"))
+            return "i1";
+        else if(type.equals("int[]"))
+            return "i32*";
+        else
+            return "i8"; 
+    }
+
 }
