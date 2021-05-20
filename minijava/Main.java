@@ -1145,6 +1145,7 @@ class IRCreator extends GJDepthFirst<Info, Object> {
 
     Scope globalScope;
     SymbolTable symTable;
+    int regNum;
     PrintWriter writer;
 
 
@@ -1152,6 +1153,7 @@ class IRCreator extends GJDepthFirst<Info, Object> {
         this.globalScope = globalScope;
         this.symTable = symTable;
         this.writer = writer;
+        this.regNum = 0;
     }
 
 
@@ -1173,7 +1175,144 @@ class IRCreator extends GJDepthFirst<Info, Object> {
         return null;
     }
 
+    /**
+    * f0 -> "class"
+    * f1 -> Identifier()
+    * f2 -> "{"
+    * f3 -> "public"
+    * f4 -> "static"
+    * f5 -> "void"
+    * f6 -> "main"
+    * f7 -> "("
+    * f8 -> "String"
+    * f9 -> "["
+    * f10 -> "]"
+    * f11 -> Identifier()
+    * f12 -> ")"
+    * f13 -> "{"
+    * f14 -> ( VarDeclaration() )*
+    * f15 -> ( Statement() )*
+    * f16 -> "}"
+    * f17 -> "}"
+    */
+    @Override
+    public Info visit(MainClass n, Object obj) throws Exception {
 
+        this.symTable.enter();  // MainClass scope
+        this.symTable.enter();  // main() scope
+        this.regNum = 0;
+        Scope mainFunScope = this.symTable.getCurrScope();
+        FunInfo fInfo = (FunInfo)(mainFunScope.getInfo());
+        this.writer.write("\ndefine i32 @main() { \n");
+        this.writer.flush();
+
+        Iterator<VarInfo> varIt = mainFunScope.getVariables().values().iterator(); 
+        VarInfo vInfo = varIt.next();  // Args skipped
+        while(varIt.hasNext()){
+            vInfo = varIt.next();
+            String varName = vInfo.getName();
+            String varType = vInfo.getIRType();
+            this.writer.write("     ");
+            instr_alloca("%" + varName, varType);
+            if(fInfo.getParameters().containsKey(varName)){
+                this.writer.write("     ");
+                instr_store("%." + varName ,"%" + varName, varType, varType +"*");
+            }
+        }
+
+
+        this.writer.write("\n     ret i32 0\n}\n");
+        this.writer.flush();
+
+        for(Node node: n.f15.nodes)
+           node.accept(this, null);
+        this.symTable.exit(); // main() scope
+        this.symTable.exit(); // MainClass scope
+        
+        return null;
+    }
+
+    /**
+    * f0 -> "class"
+    * f1 -> Identifier()
+    * f2 -> "{"
+    * f3 -> ( VarDeclaration() )*
+    * f4 -> ( MethodDeclaration() )*
+    * f5 -> "}"
+    */
+    @Override
+    public Info visit(ClassDeclaration n, Object obj) throws Exception {
+
+        this.symTable.enter(); // ClassDeclaration scope
+        for(Node node: n.f4.nodes)
+            node.accept(this, null);
+        this.symTable.exit(); // ClassDeclaration scope
+        
+        return null;
+    }
+
+    /**
+     * f0 -> "class"
+    * f1 -> Identifier()
+    * f2 -> "extends"
+    * f3 -> Identifier()
+    * f4 -> "{"
+    * f5 -> ( VarDeclaration() )*
+    * f6 -> ( MethodDeclaration() )*
+    * f7 -> "}"
+    */
+    @Override
+    public Info visit(ClassExtendsDeclaration n, Object obj) throws Exception {
+        
+        this.symTable.enter(); // ClassExtendsDeclaration scope
+        for(Node node: n.f6.nodes)
+            node.accept(this, null);
+        this.symTable.exit(); // ClassExtendsDeclaration scope
+
+        return null;
+    }
+    
+
+    /**
+    * f0 -> "public"
+    * f1 -> Type()
+    * f2 -> Identifier()
+    * f3 -> "("
+    * f4 -> ( FormalParameterList() )?
+    * f5 -> ")"
+    * f6 -> "{"
+    * f7 -> ( VarDeclaration() )*
+    * f8 -> ( Statement() )*
+    * f9 -> "return"
+    * f10 -> Expression()
+    * f11 -> ";"
+    * f12 -> "}"
+    */
+    @Override
+    public Info visit(MethodDeclaration n, Object obj) throws Exception {
+
+        this.symTable.enter();  // MethodDeclaration scope
+        this.regNum = 0;
+        Scope funScope = this.symTable.getCurrScope();
+        FunInfo fInfo = (FunInfo)(funScope.getInfo());
+        instr_define(fInfo);
+        for(VarInfo vInfo : funScope.getVariables().values()){
+            String varName = vInfo.getName();
+            String varType = vInfo.getIRType();
+            this.writer.write("     ");
+            instr_alloca("%" + varName, varType);
+            if(fInfo.getParameters().containsKey(varName)){
+                this.writer.write("     ");
+                instr_store("%." + varName ,"%" + varName, varType, varType +"*");
+            }
+        }
+
+        for(Node node: n.f8.nodes)
+            node.accept(this, null);
+        this.symTable.exit(); // MethodDeclaration scope
+
+        return null;
+    }
 
 
 
@@ -1203,24 +1342,53 @@ class IRCreator extends GJDepthFirst<Info, Object> {
 
         Iterator<ClassInfo> classIt = this.globalScope.getClasses().values().iterator();
         ClassInfo cInfo = classIt.next(); // MainClass
-        String out = "@." + cInfo.getName() + "_vtable = global [0 x i8*] []\n"; // MainClass has only the pseudo static main function which cannot be part of vtable
-        this.writer.write(out);
+        this.writer.write("@." + cInfo.getName() + "_vtable = global [0 x i8*] []\n"); // MainClass has only the pseudo static main function which cannot be part of vtable
         this.writer.flush();
         while(classIt.hasNext()){ 
             cInfo = classIt.next();
+            this.symTable.UniqueFunNames(cInfo);
             this.symTable.VTableCreate(cInfo); 
             this.writer.write(cInfo.getVTable().toString());
             this.writer.flush();
         }
 
         //Common constants, declarations and definitions
-        out = "\n\ndeclare i8* @calloc(i32, i32)\ndeclare i32 @printf(i8*, ...)\ndeclare void @exit(i32)\n\n@_cint = constant [4 x i8] c\"%d\\0a\\00\"\n";
-        out += "@_cOOB = constant [15 x i8] c\"Out of bounds\\0a\\00\"\ndefine void @print_int(i32 %i) {\n    %_str = bitcast [4 x i8]* @_cint to i8*\n    ";
-        out += "call i32 (i8*, ...) @printf(i8* %_str, i32 %i)\n    ret void\n}\n\ndefine void @throw_oob() {\n    %_str = bitcast [15 x i8]* @_cOOB to i8*\n    ";
-        out += "call i32 (i8*, ...) @printf(i8* %_str)\n    call void @exit(i32 1)\n    ret void\n}\n";
-        this.writer.write(out);
+        this.writer.write("\n\ndeclare i8* @calloc(i32, i32)\ndeclare i32 @printf(i8*, ...)\ndeclare void @exit(i32)\n\n@_cint = constant [4 x i8] c\"%d\\0a\\00\"\n");
+        this.writer.flush();
+        this.writer.write("@_cOOB = constant [15 x i8] c\"Out of bounds\\0a\\00\"\ndefine void @print_int(i32 %i) {\n    %_str = bitcast [4 x i8]* @_cint to i8*\n    ");
+        this.writer.flush(); 
+        this.writer.write("call i32 (i8*, ...) @printf(i8* %_str, i32 %i)\n    ret void\n}\n\ndefine void @throw_oob() {\n    %_str = bitcast [15 x i8]* @_cOOB to i8*\n    ");
+        this.writer.flush();
+        this.writer.write("call i32 (i8*, ...) @printf(i8* %_str)\n    call void @exit(i32 1)\n    ret void\n}\n");
         this.writer.flush();    
         
+    }
+
+    public String newTempReg() {
+        return "%_" + this.regNum ;
+    }
+
+    public void instr_alloca(String regName, String type) {
+        this.writer.write(regName + " = alloca " + type +"\n" );
+        this.writer.flush();
+    }
+
+    public void instr_store(String regName1, String regName2, String type1 ,String type2) {
+        this.writer.write("store "+ type1 + " " + regName1 +", "+ type2 + " " + regName2 +"\n" );
+        this.writer.flush();
+    }
+
+    public void instr_define(FunInfo fInfo) {
+        this.writer.write("\ndefine " + fInfo.getIRType() + " @" + fInfo.getName() +"(i8* %this");
+        this.writer.flush();
+          
+        for(VarInfo vInfo : fInfo.getParameters().values()){
+                this.writer.write(", " + vInfo.getIRType() + " %." + vInfo.getName());
+                this.writer.flush();
+        }
+
+        this.writer.write(") {\n");
+        this.writer.flush();
     }
 
 }

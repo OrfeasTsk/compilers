@@ -369,6 +369,15 @@ public class SymbolTable {
        
     }
 
+    public void UniqueFunNames(ClassInfo cInfo) {
+
+        Scope classScope = this.currScope.getChild(cInfo.getScopeIndex());
+
+        for(FunInfo fInfo : classScope.getFunctions().values())
+            fInfo.setName(cInfo.getName()+ "." + fInfo.getName()); // Function rename in order to be distinguishable from other functions with the same name
+            
+    }
+
     // GETTERS & SETTERS
 
 

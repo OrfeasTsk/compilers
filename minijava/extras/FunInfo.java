@@ -108,7 +108,7 @@ public class FunInfo extends Info{
         else if(this.type.equals("int[]"))
             return "i32*";
         else
-            return "i8"; 
+            return "i8*"; 
     }
 
     //GETTERS & SETTERS
