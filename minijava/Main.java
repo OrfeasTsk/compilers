@@ -1141,11 +1141,12 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
     }
 }
 
-class IRCreator extends GJDepthFirst<Info, Object> {
+class IRCreator extends GJDepthFirst<ExprInfo, Object> {
 
     Scope globalScope;
     SymbolTable symTable;
-    int regNum;
+    int regCounter;
+    int labCounter;
     PrintWriter writer;
 
 
@@ -1153,7 +1154,7 @@ class IRCreator extends GJDepthFirst<Info, Object> {
         this.globalScope = globalScope;
         this.symTable = symTable;
         this.writer = writer;
-        this.regNum = 0;
+        this.CounterInit();
     }
 
 
@@ -1163,7 +1164,7 @@ class IRCreator extends GJDepthFirst<Info, Object> {
     * f2 -> <EOF>
     */
     @Override
-    public Info visit(Goal n, Object obj) throws Exception {
+    public ExprInfo visit(Goal n, Object obj) throws Exception {
 
         this.symTable.enter(this.globalScope); // Global scope
         this.IRInit();
@@ -1196,13 +1197,13 @@ class IRCreator extends GJDepthFirst<Info, Object> {
     * f17 -> "}"
     */
     @Override
-    public Info visit(MainClass n, Object obj) throws Exception {
+    public ExprInfo visit(MainClass n, Object obj) throws Exception {
 
         this.symTable.enter();  // MainClass scope
         this.symTable.enter();  // main() scope
-        this.regNum = 0;
+        this.CounterInit();
         Scope mainFunScope = this.symTable.getCurrScope();
-        FunInfo fInfo = (FunInfo)(mainFunScope.getInfo());
+        //FunInfo fInfo = (FunInfo)(mainFunScope.getInfo());
         this.writer.write("\ndefine i32 @main() { \n");
         this.writer.flush();
 
@@ -1214,12 +1215,11 @@ class IRCreator extends GJDepthFirst<Info, Object> {
             String varType = vInfo.getIRType();
             this.writer.write("     ");
             instr_alloca("%" + varName, varType);
-            if(fInfo.getParameters().containsKey(varName)){
+            /*if(fInfo.getParameters().containsKey(varName)){
                 this.writer.write("     ");
                 instr_store("%." + varName ,"%" + varName, varType, varType +"*");
-            }
+            }*/
         }
-
 
         this.writer.write("\n     ret i32 0\n}\n");
         this.writer.flush();
@@ -1241,7 +1241,7 @@ class IRCreator extends GJDepthFirst<Info, Object> {
     * f5 -> "}"
     */
     @Override
-    public Info visit(ClassDeclaration n, Object obj) throws Exception {
+    public ExprInfo visit(ClassDeclaration n, Object obj) throws Exception {
 
         this.symTable.enter(); // ClassDeclaration scope
         for(Node node: n.f4.nodes)
@@ -1262,7 +1262,7 @@ class IRCreator extends GJDepthFirst<Info, Object> {
     * f7 -> "}"
     */
     @Override
-    public Info visit(ClassExtendsDeclaration n, Object obj) throws Exception {
+    public ExprInfo visit(ClassExtendsDeclaration n, Object obj) throws Exception {
         
         this.symTable.enter(); // ClassExtendsDeclaration scope
         for(Node node: n.f6.nodes)
@@ -1289,10 +1289,10 @@ class IRCreator extends GJDepthFirst<Info, Object> {
     * f12 -> "}"
     */
     @Override
-    public Info visit(MethodDeclaration n, Object obj) throws Exception {
+    public ExprInfo visit(MethodDeclaration n, Object obj) throws Exception {
 
         this.symTable.enter();  // MethodDeclaration scope
-        this.regNum = 0;
+        this.CounterInit();
         Scope funScope = this.symTable.getCurrScope();
         FunInfo fInfo = (FunInfo)(funScope.getInfo());
         instr_define(fInfo);
@@ -1315,9 +1315,72 @@ class IRCreator extends GJDepthFirst<Info, Object> {
     }
 
 
+    @Override
+    public ExprInfo visit(IntegerLiteral n, Object obj) throws Exception {
+        return new ExprInfo(n.f0.toString(), "i32");
+    }
+  
+    @Override
+    public ExprInfo visit(TrueLiteral n, Object obj) throws Exception {
+        return new ExprInfo("1", "i1"); // Every non zero value is true
+    }
+  
+    @Override
+    public ExprInfo visit(FalseLiteral n, Object obj) throws Exception {
+        return new ExprInfo("0", "i1"); // Zero value is false
+    }
+  
+    @Override
+    public ExprInfo visit(Identifier n, Object obj) throws Exception {
+        return new ExprInfo("%"+n.f0.toString(), "i8*");
+    }
+  
+    @Override
+    public ExprInfo visit(ThisExpression n, Object obj) throws Exception {
+        return new ExprInfo("%this", "i8*");
+    }
 
+    /**
+    * f0 -> "new"
+    * f1 -> "int"
+    * f2 -> "["
+    * f3 -> Expression()
+    * f4 -> "]"
+    */
+    @Override
+    public ExprInfo visit(ArrayAllocationExpression n, Object obj) throws Exception {    
+        Info retReg = n.f3.accept(this, null);
+    
+        return null;
+    }
 
+    /**
+    * f0 -> "new"
+    * f1 -> Identifier()
+    * f2 -> "("
+    * f3 -> ")"
+    */
+    public ExprInfo visit(AllocationExpression n, A argu) throws Exception {
+        return null;
+    }
 
+    /**
+     * f0 -> "!"
+    * f1 -> PrimaryExpression()
+    */
+    public ExprInfo visit(NotExpression n, Object obj) throws Exception {
+        ExprInfo retExpr = n.f1.accept(this, null);
+        return instr_icmp("ne", "i1" , retExpr.getName() , "0"); // 1-bit comparison
+    }
+
+    /**
+     * f0 -> "("
+    * f1 -> Expression()
+    * f2 -> ")"
+    */
+    public ExprInfo visit(BracketExpression n, Object obj) throws Exception {
+        return n.f1.accept(this, obj);
+    }
 
 
 
@@ -1364,16 +1427,27 @@ class IRCreator extends GJDepthFirst<Info, Object> {
         
     }
 
-    public String newTempReg() {
-        return "%_" + this.regNum ;
+    public void CounterInit(){
+        this.regCounter = 0;
+        this.labCounter = 0;
     }
+
+    public String newTempReg() {
+        return "%_" + this.regCounter++;
+
+    }
+
+    public String newLabel() {
+        return "label" + this.labCounter++;
+    }
+
 
     public void instr_alloca(String regName, String type) {
         this.writer.write(regName + " = alloca " + type +"\n" );
         this.writer.flush();
     }
 
-    public void instr_store(String regName1, String regName2, String type1 ,String type2) {
+    public void instr_store(String regName1, String regName2, String type1, String type2) {
         this.writer.write("store "+ type1 + " " + regName1 +", "+ type2 + " " + regName2 +"\n" );
         this.writer.flush();
     }
@@ -1389,6 +1463,21 @@ class IRCreator extends GJDepthFirst<Info, Object> {
 
         this.writer.write(") {\n");
         this.writer.flush();
+    }
+
+
+    public ExprInfo instr_icmp(String operation, String type, String lOperand, String rOperand){
+        String tmpReg = this.newTempReg();
+        this.writer.write(tmpReg + " = icmp " + operation + " " + lOperand + " " + rOperand);
+        this.writer.flush();
+        return new ExprInfo(tmpReg, "i1"); // Result is stored at tmpReg and the type is i1
+    }
+
+    public ExprInfo instr_bitcast(String regName, String type){
+        String tmpReg = this.newTempReg();
+        this.writer.write(tmpReg +" = bitcast "+ +"%ptr2 to i8**");
+
+        return new ExprInfo()
     }
 
 }
