@@ -1214,10 +1214,9 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
             String varName = vInfo.getName();
             String varType = vInfo.getIRType();
             this.writer.write("     ");
-            instr_alloca("%" + varName, varType);
+            instr_alloca(varType, "%" + varName);
             /*if(fInfo.getParameters().containsKey(varName)){
-                this.writer.write("     ");
-                instr_store("%." + varName ,"%" + varName, varType, varType +"*");
+                instr_store(varType, "%." + varName , varType +"*", "%" + varName);
             }*/
         }
 
@@ -1300,15 +1299,14 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
             String varName = vInfo.getName();
             String varType = vInfo.getIRType();
             this.writer.write("     ");
-            instr_alloca("%" + varName, varType);
-            if(fInfo.getParameters().containsKey(varName)){
-                this.writer.write("     ");
-                instr_store("%." + varName ,"%" + varName, varType, varType +"*");
-            }
+            instr_alloca(varType, "%" + varName);
+            if(fInfo.getParameters().containsKey(varName))
+                instr_store(varType, "%." + varName , varType +"*", "%" + varName);
         }
 
         for(Node node: n.f8.nodes)
             node.accept(this, null);
+        n.f10.accept(this, null);
         this.symTable.exit(); // MethodDeclaration scope
 
         return null;
@@ -1332,7 +1330,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
   
     @Override
     public ExprInfo visit(Identifier n, Object obj) throws Exception {
-        return new ExprInfo("%"+n.f0.toString(), "i8*");
+        return new ExprInfo(n.f0.toString(), null); // Type will be defined later
     }
   
     @Override
@@ -1360,8 +1358,19 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f2 -> "("
     * f3 -> ")"
     */
-    public ExprInfo visit(AllocationExpression n, A argu) throws Exception {
-        return null;
+    public ExprInfo visit(AllocationExpression n, Object obj) throws Exception {
+        String idName = n.f1.accept(this, null).getName();
+        ClassInfo cInfo = this.symTable.lookupClass(idName);
+        VTable vTable = cInfo.getVTable();
+        ExprInfo ret = this.calloc_call("1", String.valueOf(cInfo.getCurrVarOffset() + 8)); // Object size equals to the size of the vTable pointer (8 bytes) plus the size of all its fields (current offset)
+        ExprInfo res = this.instr_bitcast(ret.getType(), ret.getName(), "i8***" ); // Pointer at the beginning of the allocated memory changed to a vTable pointer (vTable is of type i8**)
+        String tmpReg = this.newTempReg();
+        String pType = "[" + vTable.getFunctions().size() + " x i8*]";
+        this.writer.write("    " + tmpReg + " = getelementptr " + pType + ", " + pType + "* @." + vTable.getName() + ", i32 0, i32 0\n" ); // vTable
+        this.writer.flush();
+        instr_store("i8**", tmpReg, res.getType(), res.getName()); // vTable is stored at the beginning of the allocated memory
+
+        return ret;
     }
 
     /**
@@ -1369,8 +1378,8 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f1 -> PrimaryExpression()
     */
     public ExprInfo visit(NotExpression n, Object obj) throws Exception {
-        ExprInfo retExpr = n.f1.accept(this, null);
-        return instr_icmp("ne", "i1" , retExpr.getName() , "0"); // 1-bit comparison
+        ExprInfo res = n.f1.accept(this, obj);
+        return this.instr_xor(res.getType(), res.getName() , "1"); // Complement by xor operation -> 1(true) xor 1 = 0 (false) , 0(false) xor 1 = 1 (true)
     }
 
     /**
@@ -1442,16 +1451,6 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     }
 
 
-    public void instr_alloca(String regName, String type) {
-        this.writer.write(regName + " = alloca " + type +"\n" );
-        this.writer.flush();
-    }
-
-    public void instr_store(String regName1, String regName2, String type1, String type2) {
-        this.writer.write("store "+ type1 + " " + regName1 +", "+ type2 + " " + regName2 +"\n" );
-        this.writer.flush();
-    }
-
     public void instr_define(FunInfo fInfo) {
         this.writer.write("\ndefine " + fInfo.getIRType() + " @" + fInfo.getName() +"(i8* %this");
         this.writer.flush();
@@ -1465,19 +1464,42 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
         this.writer.flush();
     }
 
+    public void instr_alloca(String type, String regName) {
+        this.writer.write(regName + " = alloca " + type +"\n" );
+        this.writer.flush();
+    }
+
+    public void instr_store(String type1, String regName1, String type2, String regName2) {
+        this.writer.write("    store "+ type1 + " " + regName1 +", "+ type2 + " " + regName2 + "\n" );
+        this.writer.flush();
+    }
 
     public ExprInfo instr_icmp(String operation, String type, String lOperand, String rOperand){
         String tmpReg = this.newTempReg();
-        this.writer.write(tmpReg + " = icmp " + operation + " " + lOperand + " " + rOperand);
+        this.writer.write("    " + tmpReg + " = icmp " + operation + " " + type + " " + lOperand + " " + rOperand +"\n");
         this.writer.flush();
         return new ExprInfo(tmpReg, "i1"); // Result is stored at tmpReg and the type is i1
     }
 
-    public ExprInfo instr_bitcast(String regName, String type){
+    public ExprInfo instr_xor(String type, String lOperand, String rOperand){
         String tmpReg = this.newTempReg();
-        this.writer.write(tmpReg +" = bitcast "+ +"%ptr2 to i8**");
+        this.writer.write("    " + tmpReg + " = xor "+ type + " " + lOperand + " " + rOperand +"\n");
+        this.writer.flush();
+        return new ExprInfo(tmpReg, type); // Result is stored at tmpReg and the type remains the same
+    }
 
-        return new ExprInfo()
+    public ExprInfo instr_bitcast(String type1, String regName, String type2){
+        String tmpReg = this.newTempReg();
+        this.writer.write("    " + tmpReg +" = bitcast "+ type1 + " " + regName + " to " + type2 +"\n");
+        this.writer.flush();
+        return new ExprInfo(tmpReg,type2);
+    }
+
+    public ExprInfo calloc_call(String nitems, String size){
+        String tmpReg = this.newTempReg();
+        this.writer.write("    " + tmpReg +" = call i8* @calloc(i32 "+ nitems +", i32 "+ size +")\n");
+        this.writer.flush();
+        return new ExprInfo(tmpReg, "i8*");
     }
 
 }
