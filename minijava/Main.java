@@ -1322,19 +1322,22 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
         String elseLabel = this.newLabel();
         String endLabel = this.newLabel();
         ExprInfo res1 = n.f0.accept(this, obj);
-        if(res1.getType().contains("*")) // Non constant is returned
-            res1 = this.instr_load(res1.getType(), res1.getName());
-        this.instr_cond_br(res1.getName(), thenLabel, elseLabel);
+        String regName1 = res1.getName();
+        if(res1.getType().equals("i1*")) // Non constant is returned
+            regName1 = this.instr_load("i1*", regName1);
+        this.instr_cond_br(regName1, thenLabel, elseLabel);
         this.emit("\n" + thenLabel +":\n");  // Left expression is true so the result depends on the right expression
         ExprInfo res2 = n.f2.accept(this, obj);
-        if(res2.getType().contains("*")) // Non constant is returned
-            res2 = this.instr_load(res2.getType(), res2.getName());
+        String regName2 = res2.getName();
+        if(res2.getType().contains("i1*")) // Non constant is returned
+            regName2 = this.instr_load("i1*", regName2);
         this.instr_br(endLabel);
         this.emit("\n" + elseLabel +":\n");
         this.instr_br(endLabel);
         this.emit("\n" + endLabel +":\n");
-        
-        return this.instr_phi(res1.getType(), res2.getName(), thenLabel, res1.getName(), elseLabel); // Right result if control flow entered the "then" block and left result if control flow entered the "else" block
+        String regName = this.instr_phi("i1", regName2, thenLabel, regName1, elseLabel); // Right result if control flow entered the "then" block and left result if control flow entered the "else" block
+
+        return new ExprInfo(regName, "i1");
      }
   
      /**
@@ -1390,19 +1393,21 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     public ExprInfo visit(ArrayAllocationExpression n, Object obj) throws Exception {    
         String thenLabel = this.newLabel();
         String elseLabel = this.newLabel();
-        ExprInfo length = n.f3.accept(this, null);
-        if(length.getType().contains("*")) // Non constant is returned
-            length = this.instr_load(length.getType(), length.getName());
-        ExprInfo res = this.instr_icmp("slt", length.getType() , length.getName(), "0"); // Bounds checking
-        this.instr_cond_br(res.getName(), thenLabel, elseLabel);
+        ExprInfo res = n.f3.accept(this, obj);
+        String lenRegName = res.getName();
+        if(res.getType().equals("i32*")) // Non constant is returned
+            lenRegName = this.instr_load("i32*", lenRegName);
+        String regName = this.instr_icmp("slt", "i32" , lenRegName, "0"); // Bounds checking
+        this.instr_cond_br(regName, thenLabel, elseLabel);
         this.throw_out_of_bounds(thenLabel, elseLabel);
         this.emit("\n" + elseLabel +":\n");
-        length = this.instr_math_op("add", length.getType() , length.getName(), "1"); // 1 extra byte for saving the array length
-        res = this.calloc_call(String.valueOf(4), length.getName()); // Allocation of 4 * length bytes (4 ints)
-        res = this.instr_bitcast(res.getType(), res.getName(), "i32*"); // Cast to i32* (int*)
-        this.instr_store(length.getType(), length.getName(), res.getType(), res.getName()); // Length saved at the beginning of the array
-
-        return this.instr_gep("i32", res.getType(), res.getName(), String.valueOf(1)); // Array pointer has been moved to the real start of the array
+        lenRegName = this.instr_math_op("add", "i32" , lenRegName, "1"); // 1 extra byte for saving the array length
+        regName = this.calloc_call(String.valueOf(4), lenRegName); // Allocation of 4 * length bytes (4 ints)
+        regName = this.instr_bitcast("i8*", regName, "i32*"); // Cast to i32* (int*)
+        this.instr_store("i32", lenRegName, "i32*", regName); // Length saved at the beginning of the array
+        regName = this.instr_gep("i32", "i32*", regName, String.valueOf(1)); // Array pointer has been moved to the real start of the array
+        
+        return new ExprInfo(regName, "i32*");
     }
 
     /**
@@ -1415,14 +1420,14 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
         String idName = n.f1.accept(this, null).getName();
         ClassInfo cInfo = this.symTable.lookupClass(idName);
         VTable vTable = cInfo.getVTable();
-        ExprInfo ret = this.calloc_call("1", String.valueOf(cInfo.getCurrVarOffset() + 8)); // Object size equals to the size of the vTable pointer (8 bytes) plus the size of all its fields (current offset)
-        ExprInfo res = this.instr_bitcast(ret.getType(), ret.getName(), "i8***" ); // Pointer at the beginning of the allocated memory changed to a vTable pointer (vTable is of type i8**)
+        String retRegName = this.calloc_call("1", String.valueOf(cInfo.getCurrVarOffset() + 8)); // Object size equals to the size of the vTable pointer (8 bytes) plus the size of all its fields (current offset)
+        String regName = this.instr_bitcast("i8*", retRegName, "i8***" ); // Pointer at the beginning of the allocated memory changed to a vTable pointer (vTable is of type i8**)
         String tmpReg = this.newTempReg();
         String pType = "[" + vTable.getFunctions().size() + " x i8*]";
         this.emit("    " + tmpReg + " = getelementptr " + pType + ", " + pType + "* @." + vTable.getName() + ", i32 0, i32 0\n" ); // vTable
-        this.instr_store("i8**", tmpReg, res.getType(), res.getName()); // vTable is stored at the beginning of the allocated memory
+        this.instr_store("i8**", tmpReg, "i8***", regName); // vTable is stored at the beginning of the allocated memory
 
-        return ret;
+        return new ExprInfo(retRegName, "i8*");
     }
 
     /**
@@ -1431,9 +1436,12 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     */
     public ExprInfo visit(NotExpression n, Object obj) throws Exception {
         ExprInfo res = n.f1.accept(this, obj);
-        if(res.getType().contains("*")) // Non constant is returned
-            res = this.instr_load(res.getType(), res.getName());
-        return this.instr_math_op("xor", res.getType(), res.getName() , "1"); // Complement by xor operation -> 1(true) xor 1 = 0 (false) , 0(false) xor 1 = 1 (true)
+        String regName = res.getName();
+        if(res.getType().equals("i1*")) // Non constant is returned
+            regName = this.instr_load("i1*", regName);
+        regName = this.instr_math_op("xor", "i1", regName , "1"); // Complement by xor operation -> 1(true) xor 1 = 0 (false) , 0(false) xor 1 = 1 (true)
+        
+        return new ExprInfo(regName, "i1");
     }
 
     /**
@@ -1524,35 +1532,35 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
         this.emit("    store "+ type1 + " " + regName1 +", "+ type2 + " " + regName2 + "\n" );
     }
 
-    public ExprInfo instr_load(String type, String regName) {
+    public String instr_load(String type, String regName) {
         String tmpReg = this.newTempReg();
         String retType = type.substring(0, type.length() - 1);
         this.emit("    " + tmpReg + " = load "+ retType + ", " + type + " " + regName + "\n");
-        return new ExprInfo(tmpReg, retType); // Result is stored at tmpReg and the value type is returned
+        return tmpReg; // Result is stored at tmpReg
     }
 
-    public ExprInfo instr_icmp(String operation, String type, String lOperand, String rOperand) {
+    public String instr_icmp(String operation, String type, String lOperand, String rOperand) {
         String tmpReg = this.newTempReg();
         this.emit("    " + tmpReg + " = icmp " + operation + " " + type + " " + lOperand + ", " + rOperand + "\n");
-        return new ExprInfo(tmpReg, "i1"); // Result is stored at tmpReg and the type is i1
+        return tmpReg; // Result is stored at tmpReg
     }
 
-    public ExprInfo instr_math_op(String operation, String type, String lOperand, String rOperand) {
+    public String instr_math_op(String operation, String type, String lOperand, String rOperand) {
         String tmpReg = this.newTempReg();
         this.emit("    " + tmpReg + " = " + operation + " " + type + " " + lOperand + ", " + rOperand + "\n");
-        return new ExprInfo(tmpReg, type); // Result is stored at tmpReg and the type remains the same
+        return tmpReg; // Result is stored at tmpReg
     }
 
-    public ExprInfo instr_bitcast(String type1, String regName, String type2) {
+    public String instr_bitcast(String type1, String regName, String type2) {
         String tmpReg = this.newTempReg();
         this.emit("    " + tmpReg +" = bitcast "+ type1 + " " + regName + " to " + type2 + "\n");
-        return new ExprInfo(tmpReg,type2);  // Result is stored at tmpReg and the type changes to the new type
+        return tmpReg;  // Result is stored at tmpReg
     }
 
-    public ExprInfo calloc_call(String nitems, String size) {
+    public String calloc_call(String nitems, String size) {
         String tmpReg = this.newTempReg();
         this.emit("    " + tmpReg +" = call i8* @calloc(i32 "+ nitems +", i32 "+ size +")\n");
-        return new ExprInfo(tmpReg, "i8*");
+        return tmpReg; // Result is stored at tmpReg
     }
 
     public void instr_cond_br(String regName, String thenLabel, String elseLabel ) {
@@ -1563,16 +1571,16 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
         this.emit("    br label " + label + "\n");
     }
 
-    public ExprInfo instr_gep(String type1, String type2, String ptr, String idx) {
+    public String instr_gep(String type1, String type2, String ptr, String idx) {
         String tmpReg = this.newTempReg();
         this.emit("    " + tmpReg +" = getelementptr "+ type1 +", "+ type2 + " " + ptr + ", i32 "+ idx +"\n");
-        return new ExprInfo(tmpReg, type2);
+        return tmpReg; // Result is stored at tmpReg
     }
 
-    public ExprInfo instr_phi(String type, String optReg1, String optLab1, String optReg2, String optLab2) {
+    public String instr_phi(String type, String optReg1, String optLab1, String optReg2, String optLab2) {
         String tmpReg = this.newTempReg();
         this.emit("    " + tmpReg +" = phi "+ type +" ["+ optReg1 +", "+ optLab1 + "], [" + optReg2 +", "+ optLab2 + "]\n");
-        return new ExprInfo(tmpReg, type);
+        return tmpReg; // Result is stored at tmpReg
     }
     
 
