@@ -12,7 +12,7 @@ class A{
     boolean flag;
     int j;
     public int foo(int i) { return 0; }
-    public A fa() { return new A(); }
+    public int[] fa() { return new int[5]; }
 }
 
 class B extends A{
