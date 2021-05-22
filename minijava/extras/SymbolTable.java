@@ -140,6 +140,28 @@ public class SymbolTable {
         return null;
     }
 
+
+    public Scope lookupScopeOfVar(String name) {
+        Scope temp = this.currScope;
+
+        while(temp != null){
+            if(temp.getType() == 'c') {// Class scope found
+                Scope retScope = getClassScopeOfField(temp, name); // Search variable in the class and its superclasses(variables are protected)
+                if(retScope != null)
+                    return retScope;
+            }
+            else{
+                if(temp.searchVar(name) != null)
+                    return temp;
+            }
+
+            temp = temp.getParentScope();
+        }
+
+        return null;
+    }
+
+
     public void visitNext() throws Exception {
         if(this.currScope.getChildrenNum() > 0){
             int next = this.currScope.getCurrChild();
@@ -277,6 +299,40 @@ public class SymbolTable {
                         vInfo = ancestorScope.searchVar(fieldName);
                         if(vInfo != null) // Field found in the ancenstor class
                             return vInfo;
+                        else
+                            currAncestor++;
+                    }
+                    else
+                        temp = temp.getParentScope();
+                }
+                return null;
+                
+            }
+            else
+                return null;
+        }            
+    }
+
+
+    public static Scope getClassScopeOfField(Scope classScope, String fieldName) {
+        
+        if(classScope.searchVar(fieldName) != null) // Field found in class
+            return classScope;
+        else{
+            ClassInfo cInfo = (ClassInfo)(classScope.getInfo());
+            Scope temp = classScope.getParentScope();
+            List<String> ancestorNames = cInfo.getAncestorNames();
+
+            if(ancestorNames.size() > 0){
+        
+                int currAncestor = 0; // Start from parent class
+                
+                while(currAncestor < ancestorNames.size()){
+                    ClassInfo ancestorClass = temp.searchClass(ancestorNames.get(currAncestor));  
+                    if(ancestorClass != null){ // If the ancenstor class was found in the current scope
+                        Scope ancestorScope = temp.getChild(ancestorClass.getScopeIndex()); // Getting ancenstor class scope
+                        if(ancestorScope.searchVar(fieldName) != null) // Field found in the ancenstor class
+                            return ancestorScope;
                         else
                             currAncestor++;
                     }
