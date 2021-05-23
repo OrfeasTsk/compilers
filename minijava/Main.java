@@ -919,7 +919,7 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
             else
                 throw new SemanticError("Function "+ funName +" cannot be found in class " + type);
             */
-            throw new SemanticError("Function "+ funName +" cannot be found in class " + type); // Cannot call functions on arrays at project 3 because class Array and Object are missing as well as their function implementations
+            throw new SemanticError("Function "+ funName +" cannot be found in class " + type); // Cannot call functions on arrays at project 3 because class Object is missing as well as its function implementations
         }
         else{
             FunInfo fInfo = this.symTable.lookupFun(type, funName);
@@ -1479,10 +1479,57 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
         String regName = res.getName();
         if(res.getType().equals("i32**")) // A pointer to the array is returned
             regName = this.instr_load("i32**", regName);
-        regName = this.instr_gep("i32", "i32*", regName, String.valueOf(-1)); // Array pointer has been moved to the length of the array
+        regName = this.instr_gep("i32", "i32*", regName, String.valueOf(-1)); // Pointer to the length of the array
         regName = this.instr_load("i32*", regName); //  Length of the array 
         
         return new ExprInfo(regName, "i32");
+    }
+
+    /**
+    * f0 -> PrimaryExpression()
+    * f1 -> "."
+    * f2 -> Identifier()
+    * f3 -> "("
+    * f4 -> ( ExpressionList() )?
+    * f5 -> ")"
+    */
+    public ExprInfo visit(MessageSend n, Object obj) throws Exception {
+       
+        ExprInfo res = n.f0.accept(this, obj);
+        String regName = res.getName();
+        if(res.getType().equals("i8**")) // A pointer to the array is returned
+            regName = this.instr_load("i8**", regName);
+        Info info = new Info();
+        n.f2.accept(this, info); // Info contains the name of the function
+        //FunInfo fInfo = this.symTable.lookupFun(type, funName);
+
+        
+        n.f4.accept(this, obj);
+        
+        return null;
+    }
+
+    /**
+     * f0 -> Expression()
+    * f1 -> ExpressionTail()
+    */
+    public ExprInfo visit(ExpressionList n, Object obj) throws Exception {
+        return null;
+    }
+
+    /**
+     * f0 -> ( ExpressionTerm() )*
+    */
+    public ExprInfo visit(ExpressionTail n, Object obj) throws Exception {
+        return null;
+    }
+
+    /**
+     * f0 -> ","
+    * f1 -> Expression()
+    */
+    public ExprInfo visit(ExpressionTerm n, Object obj) throws Exception {
+        return null;
     }
 
     /**
@@ -1527,7 +1574,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
             info.setName(n.f0.toString());
             return null;  // Only the name of the indentifier was needed
         }
-        else{
+        else{ // Info for register name and type will be returned only if obj is null (identifier is variable) 
             Scope scope = this.symTable.lookupScopeOfVar(n.f0.toString()); // A scope will always be found
             VarInfo vInfo = scope.searchVar(n.f0.toString());
             if(scope.getType() == 'c'){
