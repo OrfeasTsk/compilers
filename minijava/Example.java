@@ -12,12 +12,12 @@ class A{
     boolean flag;
     int j;
     public int foo(int i) { return 0; }
-    public int fa() { A x; int y; return x.foo(5); }
+    public boolean fa(int i, int j) { B x; int y; return x.bla(5,5); }
 }
 
 class B extends A{
     A type;
     int k;
     public int foo(int i) { return 0; }
-    public boolean bla() { return true; }
+    public boolean bla(int i, int j) { return true; }
 }

@@ -994,6 +994,7 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
         ArgCollector args = (ArgCollector)obj;
         args.add(n.f0.accept(this, args));
         n.f1.accept(this, args);
+
         return null;
     }
 
@@ -1006,6 +1007,7 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
         ArgCollector args = (ArgCollector)obj;
         for(Node node: n.f0.nodes) // Getting all the arguments
             args.add(node.accept(this, null));
+
         return null;
     }
 
@@ -1015,7 +1017,9 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
     */
     @Override
     public ExprInfo visit(ExpressionTerm n, Object obj) throws Exception {
+
         ExprInfo eInfo = n.f1.accept(this, null);
+
         return new ExprInfo(", " + eInfo.getName(), eInfo.getType());
     }
 
@@ -1069,8 +1073,10 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
 
     @Override
     public ExprInfo visit(ThisExpression n, Object obj) throws Exception {
+
         this.symTable.checkStaticCont();
         ClassInfo cInfo = this.symTable.lookupClass();
+
         return new ExprInfo("this", cInfo.getName());
     }
 
@@ -1083,11 +1089,13 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
     */
     @Override
     public ExprInfo visit(ArrayAllocationExpression n, Object obj) throws Exception {
+
         ExprInfo eInfo = n.f3.accept(this, null);
         String type = eInfo.getType();
         String expr = "new int["+ eInfo.getName() +"]";
         if(!type.equals("int"))
             throw new SemanticError("Array size must be of type int at\n\t --> "+expr+"\nFound: "+ type);
+
         return new ExprInfo(expr , "int[]");
     }
 
@@ -1099,9 +1107,11 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
     */
     @Override
     public ExprInfo visit(AllocationExpression n,  Object obj) throws Exception {
+
         String name = n.f1.accept(this, Boolean.valueOf(false)).getName();
         String expr = "new " + name + "()";
         this.symTable.checkNonPrimType(name, expr);
+
         return new ExprInfo(expr, name);
     }
 
@@ -1111,11 +1121,13 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
     */
     @Override
     public ExprInfo visit(NotExpression n, Object obj) throws Exception {
+
         ExprInfo eInfo = n.f1.accept(this, null);
         String type = eInfo.getType();
         String expr = "!" + eInfo.getName();
         if(!type.equals("boolean"))
             throw new SemanticError("Bad operand type for unary operator '!' at\n\t --> "+expr+"\nRequired: boolean\nFound: " + type);
+
         return new ExprInfo(expr, "boolean");
     }
 
@@ -1126,7 +1138,9 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
     */
     @Override
     public ExprInfo visit(BracketExpression n, Object obj) throws Exception {
+
         ExprInfo eInfo = n.f1.accept(this, null);
+        
         return new ExprInfo("("+eInfo.getName()+")", eInfo.getType());
     }
 
@@ -1435,7 +1449,6 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     */
     public RegInfo visit(ArrayLookup n, Object obj) throws Exception {
 
-        Boolean isRValue = (Boolean)obj;
         String thenLabel = this.newLabel();
         String elseLabel = this.newLabel();
         String endLabel = this.newLabel();
@@ -1453,18 +1466,12 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         this.instr_cond_br(regName, thenLabel, elseLabel);
         this.emit("\n" + thenLabel +":\n");
         regName = this.instr_gep("i32", "i32*", regName1, regName2); // A pointer to the requested element
-        RegInfo ret = null;
-        if(isRValue == true){
-            regName = this.instr_load("i32*", regName); // Element of the array is loaded if the lookup is rvalue
-            ret = new RegInfo(regName, "i32", "int");
-        }
-        else
-            ret = new RegInfo(regName, "i32*", "int");
+        regName = this.instr_load("i32*", regName); // Element of the array is loaded because the lookup expression always returns a value in minijava
         this.instr_br(endLabel);
         this.throw_out_of_bounds(elseLabel, endLabel);
         this.emit("\n" + endLabel +":\n");
         
-        return ret;
+        return new RegInfo(regName, "i32", "int");
     }
 
     /**
@@ -1495,32 +1502,60 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     */
     public RegInfo visit(MessageSend n, Object obj) throws Exception {
        
-        RegInfo res = n.f0.accept(this, obj);
-        String regName = res.getName();
-        if(res.getIRType().equals("i8**")) // A pointer to the array is returned
-            regName = this.instr_load("i8**", regName);
+        RegInfo caller = n.f0.accept(this, obj);
+        String callerName = caller.getName();
+        if(caller.getIRType().equals("i8**")) // A pointer to the array is returned
+            callerName = this.instr_load("i8**", callerName);
+        String regName = this.instr_bitcast("i8*", callerName, "i8**"); // In order to get the pointer to the beginning of the vTable
+        regName = this.instr_load("i8**", regName); // Pointer to the first byte of vTable
         Info info = new Info();
         n.f2.accept(this, info); // Info contains the name of the function
-        //FunInfo fInfo = this.symTable.lookupFun(type, funName);
+        FunInfo fInfo = this.symTable.lookupFun(caller.getExprType(), info.getName());
+        regName = this.instr_gep("i8", "i8*", regName, String.valueOf(fInfo.getOffset())); // Pointer to the function offset in the vTable
+        regName = this.instr_bitcast("i8*", regName, "i8**"); // Function pointer fixed
+        regName = this.instr_load("i8**", regName); // Function loaded
+        String funStr = fInfo.getIRType() + " (i8*";
+        for(VarInfo vInfo : fInfo.getParameters().values())
+            funStr += "," + vInfo.getIRType();
+        funStr += ")*"; 
+        regName = this.instr_bitcast("i8*", regName, funStr); // From i8* to function pointer
 
-        
-        n.f4.accept(this, obj);
+        StringBuilder argsBuilder = new StringBuilder();
+        argsBuilder.append("    call " + fInfo.getIRType() + " " + regName + "(i8* " + callerName);
+        if(n.f4.present())
+            n.f4.accept(this, argsBuilder);
+        this.emit(argsBuilder.toString() + ")\n");
         
         return null;
     }
 
     /**
-     * f0 -> Expression()
+    * f0 -> Expression()
     * f1 -> ExpressionTail()
     */
     public RegInfo visit(ExpressionList n, Object obj) throws Exception {
+        
+        StringBuilder argsBuilder = (StringBuilder)obj;
+        RegInfo res = n.f0.accept(this, null);
+        String type = toIRType(res.getExprType()); // Real type of expression
+        String regName = res.getName();
+        if(res.getIRType().equals(type + "*")) // A pointer is returned
+            regName = this.instr_load(type, regName);
+        argsBuilder.append(", " + regName);
+        n.f1.accept(this, argsBuilder);
+
         return null;
     }
 
     /**
      * f0 -> ( ExpressionTerm() )*
     */
+    @Override
     public RegInfo visit(ExpressionTail n, Object obj) throws Exception {
+
+        for(Node node: n.f0.nodes) // Getting all the other arguments
+            node.accept(this, obj);
+
         return null;
     }
 
@@ -1529,6 +1564,15 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     * f1 -> Expression()
     */
     public RegInfo visit(ExpressionTerm n, Object obj) throws Exception {
+
+        StringBuilder argsBuilder = (StringBuilder)obj;
+        RegInfo res = n.f1.accept(this, null);
+        String type = toIRType(res.getExprType()); // Real type of expression
+        String regName = res.getName();
+        if(res.getIRType().equals(type + "*")) // A pointer is returned
+            regName = this.instr_load(type, regName);
+        argsBuilder.append(", " + regName);
+
         return null;
     }
 
@@ -1640,11 +1684,12 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         ClassInfo cInfo = this.symTable.lookupClass(idName);
         VTable vTable = cInfo.getVTable();
         String retRegName = this.calloc_call("1", String.valueOf(cInfo.getCurrVarOffset() + 8)); // Object size equals to the size of the vTable pointer (8 bytes) plus the size of all its fields (current offset)
-        String regName = this.instr_bitcast("i8*", retRegName, "i8***" ); // Pointer at the beginning of the allocated memory changed to a vTable pointer (vTable is of type i8**)
+        String regName = this.instr_bitcast("i8*", retRegName, "i8**" ); // Pointer to the beginning of the allocated memory changed to a pointer to a pointer to the beginning of vTable
         String tmpReg = this.newTempReg();
         String pType = "[" + vTable.getFunctions().size() + " x i8*]";
         this.emit("    " + tmpReg + " = getelementptr " + pType + ", " + pType + "* @." + vTable.getName() + ", i32 0, i32 0\n" ); // vTable
-        this.instr_store("i8**", tmpReg, "i8***", regName); // vTable is stored at the beginning of the allocated memory
+        tmpReg = this.instr_bitcast("i8**", tmpReg, "i8*" ); // Pointer to the first byte of vTable
+        this.instr_store("i8*", tmpReg, "i8**", regName); // vTable is stored at the beginning of the allocated memory
 
         return new RegInfo(retRegName, "i8*", idName);
     }
@@ -1720,6 +1765,18 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     public void emit(String str){
         this.writer.write(str);
         this.writer.flush();
+    }
+
+    public static String toIRType(String type) {
+
+        if(type.equals("int"))
+            return "i32";
+        else if(type.equals("boolean"))
+            return "i1";
+        else if(type.equals("int[]"))
+            return "i32*";
+        else
+            return "i8*"; 
     }
 
     public String newTempReg() {
