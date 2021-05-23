@@ -1292,7 +1292,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
         this.CounterInit();
         Scope funScope = this.symTable.getCurrScope();
         FunInfo fInfo = (FunInfo)(funScope.getInfo());
-        instr_define(fInfo);
+        this.instr_define(fInfo);
         for(VarInfo vInfo : funScope.getVariables().values()){
             String varName = vInfo.getName();
             String varType = vInfo.getIRType();
@@ -1427,6 +1427,46 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
 
     /**
     * f0 -> PrimaryExpression()
+    * f1 -> "["
+    * f2 -> PrimaryExpression()
+    * f3 -> "]"
+    */
+    public ExprInfo visit(ArrayLookup n, Object obj) throws Exception {
+
+        Boolean isRValue = (Boolean)obj;
+        String thenLabel = this.newLabel();
+        String elseLabel = this.newLabel();
+        String endLabel = this.newLabel();
+        ExprInfo res1 = n.f0.accept(this, obj);
+        String regName1 = res1.getName();
+        if(res1.getType().equals("i32**")) // A pointer to the array is returned
+            regName1 = this.instr_load("i32**", regName1);
+        ExprInfo res2 = n.f2.accept(this, obj);
+        String regName2 = res2.getName();
+        if(res2.getType().equals("i32*")) // Non constant is returned
+            regName2 = this.instr_load("i32*", regName2);
+        String regName = this.instr_gep("i32", "i32*", regName1, String.valueOf(-1)); // Pointer to the length of the array
+        regName = this.instr_load("i32*", regName); //  Length of the array 
+        regName = this.instr_icmp("ult", "i32" , regName2, regName); // Bounds checking (unsigned check because if the signed value is negative its unsigned value is larger than every signed positive value)
+        this.instr_cond_br(regName, thenLabel, elseLabel);
+        this.emit("\n" + thenLabel +":\n");
+        regName = this.instr_gep("i32", "i32*", regName1, regName2); // A pointer to the requested element
+        ExprInfo ret = null;
+        if(isRValue == true){
+            regName = this.instr_load("i32*", regName); // Element of the array is loaded if the lookup is rvalue
+            ret = new ExprInfo(regName, "i32");
+        }
+        else
+            ret = new ExprInfo(regName, "i32*");
+        this.instr_br(endLabel);
+        this.throw_out_of_bounds(elseLabel, endLabel);
+        this.emit("\n" + endLabel +":\n");
+        
+        return ret;
+    }
+
+    /**
+    * f0 -> PrimaryExpression()
     * f1 -> "."
     * f2 -> "length"
     */
@@ -1434,8 +1474,11 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     public ExprInfo visit(ArrayLength n, Object obj) throws Exception {
 
         ExprInfo res = n.f0.accept(this, obj);
-        String regName = this.instr_gep("i32", "i32*", res.getName(), String.valueOf(-1)); // Array pointer has been moved to the length of the array
-        regName = this.instr_load("i32*", regName);
+        String regName = res.getName();
+        if(res.getType().equals("i32**")) // A pointer to the array is returned
+            regName = this.instr_load("i32**", regName);
+        regName = this.instr_gep("i32", "i32*", regName, String.valueOf(-1)); // Array pointer has been moved to the length of the array
+        regName = this.instr_load("i32*", regName); //  Length of the array 
         
         return new ExprInfo(regName, "i32");
     }
@@ -1513,19 +1556,22 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
          
         String thenLabel = this.newLabel();
         String elseLabel = this.newLabel();
+        String endLabel = this.newLabel();
         ExprInfo res = n.f3.accept(this, obj);
         String lenRegName = res.getName();
         if(res.getType().equals("i32*")) // Non constant is returned
             lenRegName = this.instr_load("i32*", lenRegName);
         String regName = this.instr_icmp("slt", "i32" , lenRegName, "0"); // Bounds checking
         this.instr_cond_br(regName, thenLabel, elseLabel);
-        this.throw_out_of_bounds(thenLabel, elseLabel);
+        this.throw_out_of_bounds(thenLabel, endLabel);
         this.emit("\n" + elseLabel +":\n");
         lenRegName = this.instr_math_op("add", "i32" , lenRegName, "1"); // 1 extra byte for saving the array length
         regName = this.calloc_call(String.valueOf(4), lenRegName); // Allocation of 4 * length bytes (4 ints)
         regName = this.instr_bitcast("i8*", regName, "i32*"); // Cast to i32* (int*)
         this.instr_store("i32", lenRegName, "i32*", regName); // Length saved at the beginning of the array
         regName = this.instr_gep("i32", "i32*", regName, String.valueOf(1)); // Array pointer has been moved to the real start of the array
+        this.instr_br(endLabel);
+        this.emit("\n" + endLabel +":\n");
         
         return new ExprInfo(regName, "i32*");
     }
