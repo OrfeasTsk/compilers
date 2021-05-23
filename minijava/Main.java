@@ -1143,7 +1143,7 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
     }
 }
 
-class IRCreator extends GJDepthFirst<ExprInfo, Object> {
+class IRCreator extends GJDepthFirst<RegInfo, Object> {
 
     Scope globalScope;
     SymbolTable symTable;
@@ -1166,7 +1166,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f2 -> <EOF>
     */
     @Override
-    public ExprInfo visit(Goal n, Object obj) throws Exception {
+    public RegInfo visit(Goal n, Object obj) throws Exception {
 
         this.symTable.enter(this.globalScope); // Global scope
         this.IRInit();
@@ -1199,7 +1199,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f17 -> "}"
     */
     @Override
-    public ExprInfo visit(MainClass n, Object obj) throws Exception {
+    public RegInfo visit(MainClass n, Object obj) throws Exception {
 
         this.symTable.enter();  // MainClass scope
         this.symTable.enter();  // main() scope
@@ -1240,7 +1240,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f5 -> "}"
     */
     @Override
-    public ExprInfo visit(ClassDeclaration n, Object obj) throws Exception {
+    public RegInfo visit(ClassDeclaration n, Object obj) throws Exception {
 
         this.symTable.enter(); // ClassDeclaration scope
         for(Node node: n.f4.nodes)
@@ -1261,7 +1261,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f7 -> "}"
     */
     @Override
-    public ExprInfo visit(ClassExtendsDeclaration n, Object obj) throws Exception {
+    public RegInfo visit(ClassExtendsDeclaration n, Object obj) throws Exception {
         
         this.symTable.enter(); // ClassExtendsDeclaration scope
         for(Node node: n.f6.nodes)
@@ -1288,7 +1288,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f12 -> "}"
     */
     @Override
-    public ExprInfo visit(MethodDeclaration n, Object obj) throws Exception {
+    public RegInfo visit(MethodDeclaration n, Object obj) throws Exception {
 
         this.symTable.enter();  // MethodDeclaration scope
         this.CounterInit();
@@ -1319,20 +1319,20 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f2 -> PrimaryExpression()
     */
     @Override
-    public ExprInfo visit(AndExpression n, Object obj) throws Exception {
+    public RegInfo visit(AndExpression n, Object obj) throws Exception {
 
         String thenLabel = this.newLabel();
         String elseLabel = this.newLabel();
         String endLabel = this.newLabel();
-        ExprInfo res1 = n.f0.accept(this, obj);
+        RegInfo res1 = n.f0.accept(this, obj);
         String regName1 = res1.getName();
-        if(res1.getType().equals("i1*")) // Non constant is returned
+        if(res1.getIRType().equals("i1*")) // Non constant is returned
             regName1 = this.instr_load("i1*", regName1);
         this.instr_cond_br(regName1, thenLabel, elseLabel);
         this.emit("\n" + thenLabel +":\n");  // Left expression is true so the result depends on the right expression
-        ExprInfo res2 = n.f2.accept(this, obj);
+        RegInfo res2 = n.f2.accept(this, obj);
         String regName2 = res2.getName();
-        if(res2.getType().contains("i1*")) // Non constant is returned
+        if(res2.getIRType().contains("i1*")) // Non constant is returned
             regName2 = this.instr_load("i1*", regName2);
         this.instr_br(endLabel);
         this.emit("\n" + elseLabel +":\n");
@@ -1340,7 +1340,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
         this.emit("\n" + endLabel +":\n");
         regName1 = this.instr_phi("i1", regName2, thenLabel, regName1, elseLabel); // Right result if control flow entered the "then" block and left result if control flow entered the "else" block
 
-        return new ExprInfo(regName1, "i1");
+        return new RegInfo(regName1, "i1", "boolean");
      }
   
     /**
@@ -1349,19 +1349,19 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f2 -> PrimaryExpression()
     */
     @Override
-    public ExprInfo visit(CompareExpression n, Object obj) throws Exception {
+    public RegInfo visit(CompareExpression n, Object obj) throws Exception {
         
-        ExprInfo res1 = n.f0.accept(this, obj);
+        RegInfo res1 = n.f0.accept(this, obj);
         String regName1 = res1.getName();
-        if(res1.getType().equals("i32*")) // Non constant is returned
+        if(res1.getIRType().equals("i32*")) // Non constant is returned
             regName1 = this.instr_load("i32*", regName1);
-        ExprInfo res2 = n.f2.accept(this, obj);
+        RegInfo res2 = n.f2.accept(this, obj);
         String regName2 = res2.getName();
-        if(res2.getType().equals("i32*")) // Non constant is returned
+        if(res2.getIRType().equals("i32*")) // Non constant is returned
             regName2 = this.instr_load("i32*", regName2);
         regName1 = this.instr_icmp("slt", "i32" , regName1, regName2); 
         
-        return new ExprInfo(regName1, "i1");
+        return new RegInfo(regName1, "i1", "boolean");
     }
 
     /**
@@ -1370,19 +1370,19 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f2 -> PrimaryExpression()
     */
     @Override
-    public ExprInfo visit(PlusExpression n, Object obj) throws Exception {
+    public RegInfo visit(PlusExpression n, Object obj) throws Exception {
 
-        ExprInfo res1 = n.f0.accept(this, obj);
+        RegInfo res1 = n.f0.accept(this, obj);
         String regName1 = res1.getName();
-        if(res1.getType().equals("i32*")) // Non constant is returned
+        if(res1.getIRType().equals("i32*")) // Non constant is returned
             regName1 = this.instr_load("i32*", regName1);
-        ExprInfo res2 = n.f2.accept(this, obj);
+        RegInfo res2 = n.f2.accept(this, obj);
         String regName2 = res2.getName();
-        if(res2.getType().equals("i32*")) // Non constant is returned
+        if(res2.getIRType().equals("i32*")) // Non constant is returned
             regName2 = this.instr_load("i32*", regName2);
         regName1 = this.instr_math_op("add", "i32", regName1, regName2);
         
-        return new ExprInfo(regName1, "i32");
+        return new RegInfo(regName1, "i32", "int");
     }
 
     /**
@@ -1391,19 +1391,19 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f2 -> PrimaryExpression()
     */
     @Override
-    public ExprInfo visit(MinusExpression n, Object obj) throws Exception {
+    public RegInfo visit(MinusExpression n, Object obj) throws Exception {
 
-        ExprInfo res1 = n.f0.accept(this, obj);
+        RegInfo res1 = n.f0.accept(this, obj);
         String regName1 = res1.getName();
-        if(res1.getType().equals("i32*")) // Non constant is returned
+        if(res1.getIRType().equals("i32*")) // Non constant is returned
             regName1 = this.instr_load("i32*", regName1);
-        ExprInfo res2 = n.f2.accept(this, obj);
+        RegInfo res2 = n.f2.accept(this, obj);
         String regName2 = res2.getName();
-        if(res2.getType().equals("i32*")) // Non constant is returned
+        if(res2.getIRType().equals("i32*")) // Non constant is returned
             regName2 = this.instr_load("i32*", regName2);
         regName1 = this.instr_math_op("sub", "i32", regName1, regName2);
         
-        return new ExprInfo(regName1, "i32");
+        return new RegInfo(regName1, "i32", "int");
     }
 
     /**
@@ -1412,19 +1412,19 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f2 -> PrimaryExpression()
     */
     @Override
-    public ExprInfo visit(TimesExpression n, Object obj) throws Exception {
+    public RegInfo visit(TimesExpression n, Object obj) throws Exception {
 
-        ExprInfo res1 = n.f0.accept(this, obj);
+        RegInfo res1 = n.f0.accept(this, obj);
         String regName1 = res1.getName();
-        if(res1.getType().equals("i32*")) // Non constant is returned
+        if(res1.getIRType().equals("i32*")) // Non constant is returned
             regName1 = this.instr_load("i32*", regName1);
-        ExprInfo res2 = n.f2.accept(this, obj);
+        RegInfo res2 = n.f2.accept(this, obj);
         String regName2 = res2.getName();
-        if(res2.getType().equals("i32*")) // Non constant is returned
+        if(res2.getIRType().equals("i32*")) // Non constant is returned
             regName2 = this.instr_load("i32*", regName2);
         regName1 = this.instr_math_op("mul", "i32", regName1, regName2);
         
-        return new ExprInfo(regName1, "i32");
+        return new RegInfo(regName1, "i32", "int");
     }
 
     /**
@@ -1433,19 +1433,19 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f2 -> PrimaryExpression()
     * f3 -> "]"
     */
-    public ExprInfo visit(ArrayLookup n, Object obj) throws Exception {
+    public RegInfo visit(ArrayLookup n, Object obj) throws Exception {
 
         Boolean isRValue = (Boolean)obj;
         String thenLabel = this.newLabel();
         String elseLabel = this.newLabel();
         String endLabel = this.newLabel();
-        ExprInfo res1 = n.f0.accept(this, obj);
+        RegInfo res1 = n.f0.accept(this, obj);
         String regName1 = res1.getName();
-        if(res1.getType().equals("i32**")) // A pointer to the array is returned
+        if(res1.getIRType().equals("i32**")) // A pointer to the array is returned
             regName1 = this.instr_load("i32**", regName1);
-        ExprInfo res2 = n.f2.accept(this, obj);
+        RegInfo res2 = n.f2.accept(this, obj);
         String regName2 = res2.getName();
-        if(res2.getType().equals("i32*")) // Non constant is returned
+        if(res2.getIRType().equals("i32*")) // Non constant is returned
             regName2 = this.instr_load("i32*", regName2);
         String regName = this.instr_gep("i32", "i32*", regName1, String.valueOf(-1)); // Pointer to the length of the array
         regName = this.instr_load("i32*", regName); //  Length of the array 
@@ -1453,13 +1453,13 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
         this.instr_cond_br(regName, thenLabel, elseLabel);
         this.emit("\n" + thenLabel +":\n");
         regName = this.instr_gep("i32", "i32*", regName1, regName2); // A pointer to the requested element
-        ExprInfo ret = null;
+        RegInfo ret = null;
         if(isRValue == true){
             regName = this.instr_load("i32*", regName); // Element of the array is loaded if the lookup is rvalue
-            ret = new ExprInfo(regName, "i32");
+            ret = new RegInfo(regName, "i32", "int");
         }
         else
-            ret = new ExprInfo(regName, "i32*");
+            ret = new RegInfo(regName, "i32*", "int");
         this.instr_br(endLabel);
         this.throw_out_of_bounds(elseLabel, endLabel);
         this.emit("\n" + endLabel +":\n");
@@ -1473,16 +1473,16 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f2 -> "length"
     */
     @Override
-    public ExprInfo visit(ArrayLength n, Object obj) throws Exception {
+    public RegInfo visit(ArrayLength n, Object obj) throws Exception {
 
-        ExprInfo res = n.f0.accept(this, obj);
+        RegInfo res = n.f0.accept(this, obj);
         String regName = res.getName();
-        if(res.getType().equals("i32**")) // A pointer to the array is returned
+        if(res.getIRType().equals("i32**")) // A pointer to the array is returned
             regName = this.instr_load("i32**", regName);
         regName = this.instr_gep("i32", "i32*", regName, String.valueOf(-1)); // Pointer to the length of the array
         regName = this.instr_load("i32*", regName); //  Length of the array 
         
-        return new ExprInfo(regName, "i32");
+        return new RegInfo(regName, "i32", "int");
     }
 
     /**
@@ -1493,11 +1493,11 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f4 -> ( ExpressionList() )?
     * f5 -> ")"
     */
-    public ExprInfo visit(MessageSend n, Object obj) throws Exception {
+    public RegInfo visit(MessageSend n, Object obj) throws Exception {
        
-        ExprInfo res = n.f0.accept(this, obj);
+        RegInfo res = n.f0.accept(this, obj);
         String regName = res.getName();
-        if(res.getType().equals("i8**")) // A pointer to the array is returned
+        if(res.getIRType().equals("i8**")) // A pointer to the array is returned
             regName = this.instr_load("i8**", regName);
         Info info = new Info();
         n.f2.accept(this, info); // Info contains the name of the function
@@ -1513,14 +1513,14 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
      * f0 -> Expression()
     * f1 -> ExpressionTail()
     */
-    public ExprInfo visit(ExpressionList n, Object obj) throws Exception {
+    public RegInfo visit(ExpressionList n, Object obj) throws Exception {
         return null;
     }
 
     /**
      * f0 -> ( ExpressionTerm() )*
     */
-    public ExprInfo visit(ExpressionTail n, Object obj) throws Exception {
+    public RegInfo visit(ExpressionTail n, Object obj) throws Exception {
         return null;
     }
 
@@ -1528,7 +1528,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
      * f0 -> ","
     * f1 -> Expression()
     */
-    public ExprInfo visit(ExpressionTerm n, Object obj) throws Exception {
+    public RegInfo visit(ExpressionTerm n, Object obj) throws Exception {
         return null;
     }
 
@@ -1544,7 +1544,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     *       | BracketExpression()
     */
     @Override
-    public ExprInfo visit(PrimaryExpression n, Object obj) throws Exception {
+    public RegInfo visit(PrimaryExpression n, Object obj) throws Exception {
         if(n.f0.which == 3) // If the choice is identifier (so the register name and type of the variable must be returned)
             return n.f0.accept(this, null);
         else
@@ -1552,22 +1552,22 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     }
 
     @Override
-    public ExprInfo visit(IntegerLiteral n, Object obj) throws Exception {
-        return new ExprInfo(n.f0.toString(), "i32");
+    public RegInfo visit(IntegerLiteral n, Object obj) throws Exception {
+        return new RegInfo(n.f0.toString(), "i32", "int");
     }
   
     @Override
-    public ExprInfo visit(TrueLiteral n, Object obj) throws Exception {
-        return new ExprInfo("1", "i1"); // Every non zero value is true
+    public RegInfo visit(TrueLiteral n, Object obj) throws Exception {
+        return new RegInfo("1", "i1", "boolean"); // Every non zero value is true
     }
   
     @Override
-    public ExprInfo visit(FalseLiteral n, Object obj) throws Exception {
-        return new ExprInfo("0", "i1"); // Zero value is false
+    public RegInfo visit(FalseLiteral n, Object obj) throws Exception {
+        return new RegInfo("0", "i1", "boolean"); // Zero value is false
     }
   
     @Override
-    public ExprInfo visit(Identifier n, Object obj) throws Exception {
+    public RegInfo visit(Identifier n, Object obj) throws Exception {
 
         if(obj != null){
             Info info = (Info)obj;
@@ -1580,17 +1580,18 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
             if(scope.getType() == 'c'){
                 String regName = this.instr_gep("i8", "i8*", "%this", String.valueOf(vInfo.getOffset() + 8)); // Field is located 8 bytes (vTable size) after its offset 
                 regName = this.instr_bitcast("i8*", regName, vInfo.getIRType() + "*"); // A pointer to the allocated memory will be returned
-                return new ExprInfo(regName, vInfo.getIRType() + "*"); 
+                return new RegInfo(regName, vInfo.getIRType() + "*", vInfo.getType()); 
             }
             else
-                return new ExprInfo("%" + vInfo.getName(), vInfo.getIRType() + "*");  // A pointer to the stack (same with the pointer of alloca) will be returned
+                return new RegInfo("%" + vInfo.getName(), vInfo.getIRType() + "*", vInfo.getType());  // A pointer to the stack (same with the pointer of alloca) will be returned
         }
     }
 
   
     @Override
-    public ExprInfo visit(ThisExpression n, Object obj) throws Exception {
-        return new ExprInfo("%this", "i8*");
+    public RegInfo visit(ThisExpression n, Object obj) throws Exception {
+        ClassInfo cInfo = this.symTable.lookupClass();
+        return new RegInfo("%this", "i8*", cInfo.getName());
     }
 
     /**
@@ -1601,14 +1602,14 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f4 -> "]"
     */
     @Override
-    public ExprInfo visit(ArrayAllocationExpression n, Object obj) throws Exception {   
+    public RegInfo visit(ArrayAllocationExpression n, Object obj) throws Exception {   
          
         String thenLabel = this.newLabel();
         String elseLabel = this.newLabel();
         String endLabel = this.newLabel();
-        ExprInfo res = n.f3.accept(this, obj);
+        RegInfo res = n.f3.accept(this, obj);
         String lenRegName = res.getName();
-        if(res.getType().equals("i32*")) // Non constant is returned
+        if(res.getIRType().equals("i32*")) // Non constant is returned
             lenRegName = this.instr_load("i32*", lenRegName);
         String regName = this.instr_icmp("slt", "i32" , lenRegName, "0"); // Bounds checking
         this.instr_cond_br(regName, thenLabel, elseLabel);
@@ -1622,7 +1623,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
         this.instr_br(endLabel);
         this.emit("\n" + endLabel +":\n");
         
-        return new ExprInfo(regName, "i32*");
+        return new RegInfo(regName, "i32*", "int[]");
     }
 
     /**
@@ -1631,7 +1632,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f2 -> "("
     * f3 -> ")"
     */
-    public ExprInfo visit(AllocationExpression n, Object obj) throws Exception {
+    public RegInfo visit(AllocationExpression n, Object obj) throws Exception {
 
         Info info = new Info();
         n.f1.accept(this, info); // Name of the identifier
@@ -1645,22 +1646,22 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
         this.emit("    " + tmpReg + " = getelementptr " + pType + ", " + pType + "* @." + vTable.getName() + ", i32 0, i32 0\n" ); // vTable
         this.instr_store("i8**", tmpReg, "i8***", regName); // vTable is stored at the beginning of the allocated memory
 
-        return new ExprInfo(retRegName, "i8*");
+        return new RegInfo(retRegName, "i8*", idName);
     }
 
     /**
     * f0 -> "!"
     * f1 -> PrimaryExpression()
     */
-    public ExprInfo visit(NotExpression n, Object obj) throws Exception {
+    public RegInfo visit(NotExpression n, Object obj) throws Exception {
 
-        ExprInfo res = n.f1.accept(this, obj);
+        RegInfo res = n.f1.accept(this, obj);
         String regName = res.getName();
-        if(res.getType().equals("i1*")) // Non constant is returned
+        if(res.getIRType().equals("i1*")) // Non constant is returned
             regName = this.instr_load("i1*", regName);
         regName = this.instr_math_op("xor", "i1", regName , "1"); // Complement by xor operation -> 1(true) xor 1 = 0 (false) , 0(false) xor 1 = 1 (true)
         
-        return new ExprInfo(regName, "i1");
+        return new RegInfo(regName, "i1", "boolean");
     }
 
     /**
@@ -1668,7 +1669,7 @@ class IRCreator extends GJDepthFirst<ExprInfo, Object> {
     * f1 -> Expression()
     * f2 -> ")"
     */
-    public ExprInfo visit(BracketExpression n, Object obj) throws Exception {
+    public RegInfo visit(BracketExpression n, Object obj) throws Exception {
         return n.f1.accept(this, obj);
     }
 

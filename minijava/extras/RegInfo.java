@@ -3,12 +3,13 @@ package extras;
 public class RegInfo extends Info {
 
     private String IRType; // Type of register for the IR
-    private ExprInfo exprInfo; // Expression info of register
+    private String exprType; // Expression type of register
 
 
-    public RegInfo(String name, ExprInfo exprInfo) {
+    public RegInfo(String name, String IRType, String exprType) {
         super(name);
-        this.exprInfo = exprInfo;
+        this.IRType = IRType;
+        this.exprType = exprType;
     }
 
     // GETTERS & SETTERS
@@ -21,11 +22,11 @@ public class RegInfo extends Info {
         this.IRType = IRType;
     }
 
-    public ExprInfo getExprInfo() {
-        return this.exprInfo;
+    public String getExprType() {
+        return this.exprType;
     }
 
-    public void setExprInfo(ExprInfo exprInfo) {
-        this.exprInfo = exprInfo;
+    public void setExprType(String exprType) {
+        this.exprType = exprType;
     }
 }
