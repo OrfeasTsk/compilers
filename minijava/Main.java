@@ -876,8 +876,8 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
             expr += "."+ funName + "("+ args.concatArgs() +")";
             throw new SemanticError("Type "+ type +" cannot be dereferenced at \n\t --> " + expr);
         }
-        else if(type.contains("[]")){ //.equals(), .hashCode() and functions are allowed (return type boolean and int respectively)
-            if(funName.equals("equals")){
+        else if(type.contains("[]")){ //.equals(), .hashCode() and functions are allowed (return type boolean and int respectively) (only for project 2)
+          /*  if(funName.equals("equals")){
                 if(n.f4.present()){
                     ArgCollector args = new ArgCollector();
                     n.f4.accept(this, args);
@@ -918,6 +918,8 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
             }
             else
                 throw new SemanticError("Function "+ funName +" cannot be found in class " + type);
+            */
+            throw new SemanticError("Function "+ funName +" cannot be found in class " + type); // Cannot call functions on arrays at project 3 because class Array and Object are missing as well as their function implementations
         }
         else{
             FunInfo fInfo = this.symTable.lookupFun(type, funName);
