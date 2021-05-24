@@ -585,8 +585,10 @@ class TypeChecker extends GJDepthFirst<ExprInfo, Object>{
         */
     @Override
     public ExprInfo visit(Block n, Object obj) throws Exception {
-
-        n.f1.accept(this, null);
+        
+        for(Node node: n.f1.nodes)
+            node.accept(this, null);
+    
         return null;
     }
 
@@ -1228,17 +1230,16 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
             vInfo = varIt.next();
             String varName = vInfo.getName();
             String varType = vInfo.getIRType();
-            this.emit("     ");
+            this.emit("    ");
             instr_alloca(varType, "%" + varName);
             /*if(fInfo.getParameters().containsKey(varName)){
                 instr_store(varType, "%." + varName , varType +"*", "%" + varName);
             }*/
         }
-
-        this.emit("\n     ret i32 0\n}\n");
-
         for(Node node: n.f15.nodes)
            node.accept(this, null);
+        this.emit("\n    ret i32 0\n}\n");
+        
         this.symTable.exit(); // main() scope
         this.symTable.exit(); // MainClass scope
         
@@ -1312,7 +1313,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         for(VarInfo vInfo : funScope.getVariables().values()){
             String varName = vInfo.getName();
             String varType = vInfo.getIRType();
-            this.emit("     ");
+            this.emit("    ");
             instr_alloca(varType, "%" + varName);
             if(fInfo.getParameters().containsKey(varName))
                 instr_store(varType, "%." + varName , varType +"*", "%" + varName);
@@ -1323,6 +1324,105 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         n.f10.accept(this, null);
         this.symTable.exit(); // MethodDeclaration scope
 
+        return null;
+    }
+
+    /**
+    * f0 -> "{"
+    * f1 -> ( Statement() )*
+    * f2 -> "}"
+    */
+    @Override
+    public RegInfo visit(Block n, Object obj) throws Exception {
+        
+        for(Node node: n.f1.nodes)
+            node.accept(this, null);
+    
+        return null;
+    }
+
+    /**
+    * f0 -> Identifier()
+    * f1 -> "="
+    * f2 -> Expression()
+    * f3 -> ";"
+    */
+    @Override
+    public RegInfo visit(AssignmentStatement n, Object obj) throws Exception {
+       
+        n.f0.accept(this, new Info("addr"));
+        n.f2.accept(this, null);
+       
+        return null;
+    }
+
+    /**
+    * f0 -> Identifier()
+    * f1 -> "["
+    * f2 -> Expression()
+    * f3 -> "]"
+    * f4 -> "="
+    * f5 -> Expression()
+    * f6 -> ";"
+    */
+    @Override
+    public RegInfo visit(ArrayAssignmentStatement n, Object obj) throws Exception {
+        
+        n.f0.accept(this, new Info("val"));
+        n.f2.accept(this, null);
+        n.f5.accept(this, null);
+        
+        return null;
+    }
+
+    /**
+     * f0 -> "if"
+    * f1 -> "("
+    * f2 -> Expression()
+    * f3 -> ")"
+    * f4 -> Statement()
+    * f5 -> "else"
+    * f6 -> Statement()
+    */
+    @Override
+    public RegInfo visit(IfStatement n, Object obj) throws Exception {
+        
+        n.f2.accept(this, null);
+        n.f4.accept(this, null);
+        n.f6.accept(this, null);
+
+        return null;
+    }
+
+    /**
+     * f0 -> "while"
+    * f1 -> "("
+    * f2 -> Expression()
+    * f3 -> ")"
+    * f4 -> Statement()
+    */
+    @Override
+    public RegInfo visit(WhileStatement n, Object obj) throws Exception {
+
+        n.f2.accept(this, null);
+        n.f4.accept(this, null);
+
+        return null;
+    }
+
+    /**
+     * f0 -> "System.out.println"
+    * f1 -> "("
+    * f2 -> Expression()
+    * f3 -> ")"
+    * f4 -> ";"
+    */
+    @Override
+    public RegInfo visit(PrintStatement n, Object obj) throws Exception {
+    
+        RegInfo res = n.f2.accept(this, null);
+        this.emit("    call void (i32) @print_int(i32 "+ res.getName() +")");
+        
         return null;
     }
 
@@ -1442,7 +1542,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         this.instr_cond_br(regName, thenLabel, elseLabel);
         this.emit("\n" + thenLabel +":\n");
         regName = this.instr_gep("i32", "i32*", regName1, regName2); // A pointer to the requested element
-        regName = this.instr_load("i32*", regName); // Element of the array is loaded because the lookup expression always returns a value in minijava
+        regName = this.instr_load("i32*", regName); // Element of the array is loaded because the array lookup expression always returns a value in minijava
         this.instr_br(endLabel);
         this.throw_out_of_bounds(elseLabel, endLabel);
         this.emit("\n" + endLabel +":\n");
