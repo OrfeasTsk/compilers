@@ -1338,23 +1338,19 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         String thenLabel = this.newLabel();
         String elseLabel = this.newLabel();
         String endLabel = this.newLabel();
-        RegInfo res1 = n.f0.accept(this, obj);
+        RegInfo res1 = n.f0.accept(this, null);
         String regName1 = res1.getName();
-        if(res1.getIRType().equals("i1*")) // Non constant is returned
-            regName1 = this.instr_load("i1*", regName1);
         this.instr_cond_br(regName1, thenLabel, elseLabel);
         this.emit("\n" + thenLabel +":\n");  // Left expression is true so the result depends on the right expression
-        RegInfo res2 = n.f2.accept(this, obj);
+        RegInfo res2 = n.f2.accept(this, null);
         String regName2 = res2.getName();
-        if(res2.getIRType().contains("i1*")) // Non constant is returned
-            regName2 = this.instr_load("i1*", regName2);
         this.instr_br(endLabel);
         this.emit("\n" + elseLabel +":\n");
         this.instr_br(endLabel);
         this.emit("\n" + endLabel +":\n");
         regName1 = this.instr_phi("i1", regName2, thenLabel, regName1, elseLabel); // Right result if control flow entered the "then" block and left result if control flow entered the "else" block
 
-        return new RegInfo(regName1, "i1", "boolean");
+        return new RegInfo(regName1, "boolean");
      }
   
     /**
@@ -1365,17 +1361,13 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     @Override
     public RegInfo visit(CompareExpression n, Object obj) throws Exception {
         
-        RegInfo res1 = n.f0.accept(this, obj);
+        RegInfo res1 = n.f0.accept(this, null);
         String regName1 = res1.getName();
-        if(res1.getIRType().equals("i32*")) // Non constant is returned
-            regName1 = this.instr_load("i32*", regName1);
-        RegInfo res2 = n.f2.accept(this, obj);
+        RegInfo res2 = n.f2.accept(this, null);
         String regName2 = res2.getName();
-        if(res2.getIRType().equals("i32*")) // Non constant is returned
-            regName2 = this.instr_load("i32*", regName2);
         regName1 = this.instr_icmp("slt", "i32" , regName1, regName2); 
         
-        return new RegInfo(regName1, "i1", "boolean");
+        return new RegInfo(regName1, "boolean");
     }
 
     /**
@@ -1386,17 +1378,13 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     @Override
     public RegInfo visit(PlusExpression n, Object obj) throws Exception {
 
-        RegInfo res1 = n.f0.accept(this, obj);
+        RegInfo res1 = n.f0.accept(this, null);
         String regName1 = res1.getName();
-        if(res1.getIRType().equals("i32*")) // Non constant is returned
-            regName1 = this.instr_load("i32*", regName1);
-        RegInfo res2 = n.f2.accept(this, obj);
+        RegInfo res2 = n.f2.accept(this, null);
         String regName2 = res2.getName();
-        if(res2.getIRType().equals("i32*")) // Non constant is returned
-            regName2 = this.instr_load("i32*", regName2);
         regName1 = this.instr_math_op("add", "i32", regName1, regName2);
         
-        return new RegInfo(regName1, "i32", "int");
+        return new RegInfo(regName1, "int");
     }
 
     /**
@@ -1407,17 +1395,13 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     @Override
     public RegInfo visit(MinusExpression n, Object obj) throws Exception {
 
-        RegInfo res1 = n.f0.accept(this, obj);
+        RegInfo res1 = n.f0.accept(this, null);
         String regName1 = res1.getName();
-        if(res1.getIRType().equals("i32*")) // Non constant is returned
-            regName1 = this.instr_load("i32*", regName1);
-        RegInfo res2 = n.f2.accept(this, obj);
+        RegInfo res2 = n.f2.accept(this, null);
         String regName2 = res2.getName();
-        if(res2.getIRType().equals("i32*")) // Non constant is returned
-            regName2 = this.instr_load("i32*", regName2);
         regName1 = this.instr_math_op("sub", "i32", regName1, regName2);
         
-        return new RegInfo(regName1, "i32", "int");
+        return new RegInfo(regName1, "int");
     }
 
     /**
@@ -1428,17 +1412,13 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     @Override
     public RegInfo visit(TimesExpression n, Object obj) throws Exception {
 
-        RegInfo res1 = n.f0.accept(this, obj);
+        RegInfo res1 = n.f0.accept(this, null);
         String regName1 = res1.getName();
-        if(res1.getIRType().equals("i32*")) // Non constant is returned
-            regName1 = this.instr_load("i32*", regName1);
-        RegInfo res2 = n.f2.accept(this, obj);
+        RegInfo res2 = n.f2.accept(this, null);
         String regName2 = res2.getName();
-        if(res2.getIRType().equals("i32*")) // Non constant is returned
-            regName2 = this.instr_load("i32*", regName2);
         regName1 = this.instr_math_op("mul", "i32", regName1, regName2);
         
-        return new RegInfo(regName1, "i32", "int");
+        return new RegInfo(regName1, "int");
     }
 
     /**
@@ -1452,14 +1432,10 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         String thenLabel = this.newLabel();
         String elseLabel = this.newLabel();
         String endLabel = this.newLabel();
-        RegInfo res1 = n.f0.accept(this, obj);
+        RegInfo res1 = n.f0.accept(this, null);
         String regName1 = res1.getName();
-        if(res1.getIRType().equals("i32**")) // A pointer to the array is returned
-            regName1 = this.instr_load("i32**", regName1);
-        RegInfo res2 = n.f2.accept(this, obj);
+        RegInfo res2 = n.f2.accept(this, null);
         String regName2 = res2.getName();
-        if(res2.getIRType().equals("i32*")) // Non constant is returned
-            regName2 = this.instr_load("i32*", regName2);
         String regName = this.instr_gep("i32", "i32*", regName1, String.valueOf(-1)); // Pointer to the length of the array
         regName = this.instr_load("i32*", regName); //  Length of the array 
         regName = this.instr_icmp("ult", "i32" , regName2, regName); // Bounds checking (unsigned check because if the signed value is negative its unsigned value is larger than every signed positive value)
@@ -1471,7 +1447,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         this.throw_out_of_bounds(elseLabel, endLabel);
         this.emit("\n" + endLabel +":\n");
         
-        return new RegInfo(regName, "i32", "int");
+        return new RegInfo(regName, "int");
     }
 
     /**
@@ -1482,14 +1458,12 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     @Override
     public RegInfo visit(ArrayLength n, Object obj) throws Exception {
 
-        RegInfo res = n.f0.accept(this, obj);
+        RegInfo res = n.f0.accept(this, null);
         String regName = res.getName();
-        if(res.getIRType().equals("i32**")) // A pointer to the array is returned
-            regName = this.instr_load("i32**", regName);
         regName = this.instr_gep("i32", "i32*", regName, String.valueOf(-1)); // Pointer to the length of the array
         regName = this.instr_load("i32*", regName); //  Length of the array 
         
-        return new RegInfo(regName, "i32", "int");
+        return new RegInfo(regName, "int");
     }
 
     /**
@@ -1502,21 +1476,19 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     */
     public RegInfo visit(MessageSend n, Object obj) throws Exception {
        
-        RegInfo caller = n.f0.accept(this, obj);
+        RegInfo caller = n.f0.accept(this, null);
         String callerName = caller.getName();
-        if(caller.getIRType().equals("i8**")) // A pointer to the array is returned
-            callerName = this.instr_load("i8**", callerName);
-        String regName = this.instr_bitcast("i8*", callerName, "i8**"); // In order to get the pointer to the beginning of the vTable
-        regName = this.instr_load("i8**", regName); // Pointer to the first byte of vTable
+        //String regName = this.instr_bitcast("i8*", callerName, "i8**"); // In order to get the pointer to the beginning of the vTable
+        //regName = this.instr_load("i8**", regName); // Pointer to the first byte of vTable
         Info info = new Info();
         n.f2.accept(this, info); // Info contains the name of the function
-        FunInfo fInfo = this.symTable.lookupFun(caller.getExprType(), info.getName());
-        regName = this.instr_gep("i8", "i8*", regName, String.valueOf(fInfo.getOffset())); // Pointer to the function offset in the vTable
+        FunInfo fInfo = this.symTable.lookupFun(caller.getType(), info.getName());
+        String regName = this.instr_gep("i8", "i8*", callerName, String.valueOf(fInfo.getOffset())); // Pointer to the function offset in the vTable
         regName = this.instr_bitcast("i8*", regName, "i8**"); // Function pointer fixed
         regName = this.instr_load("i8**", regName); // Function loaded
         String funStr = fInfo.getIRType() + " (i8*";
         for(VarInfo vInfo : fInfo.getParameters().values())
-            funStr += "," + vInfo.getIRType();
+            funStr += ", " + vInfo.getIRType();
         funStr += ")*"; 
         regName = this.instr_bitcast("i8*", regName, funStr); // From i8* to function pointer
 
@@ -1537,11 +1509,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         
         StringBuilder argsBuilder = (StringBuilder)obj;
         RegInfo res = n.f0.accept(this, null);
-        String type = toIRType(res.getExprType()); // Real type of expression
-        String regName = res.getName();
-        if(res.getIRType().equals(type + "*")) // A pointer is returned
-            regName = this.instr_load(type, regName);
-        argsBuilder.append(", " + regName);
+        argsBuilder.append(", " + res.getIRType() + " " + res.getName());
         n.f1.accept(this, argsBuilder);
 
         return null;
@@ -1567,11 +1535,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
 
         StringBuilder argsBuilder = (StringBuilder)obj;
         RegInfo res = n.f1.accept(this, null);
-        String type = toIRType(res.getExprType()); // Real type of expression
-        String regName = res.getName();
-        if(res.getIRType().equals(type + "*")) // A pointer is returned
-            regName = this.instr_load(type, regName);
-        argsBuilder.append(", " + regName);
+        argsBuilder.append(", " + res.getIRType() + " " + res.getName());
 
         return null;
     }
@@ -1590,52 +1554,63 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     @Override
     public RegInfo visit(PrimaryExpression n, Object obj) throws Exception {
         if(n.f0.which == 3) // If the choice is identifier (so the register name and type of the variable must be returned)
-            return n.f0.accept(this, null);
+            return n.f0.accept(this, new Info("val")); // Identifiers can be either lvalues or rvalues (in this case an identifier is rvalue because all expressions in minijava are rvalues)
         else
-            return n.f0.accept(this, obj);
+            return n.f0.accept(this, null);
     }
 
     @Override
     public RegInfo visit(IntegerLiteral n, Object obj) throws Exception {
-        return new RegInfo(n.f0.toString(), "i32", "int");
+        return new RegInfo(n.f0.toString(), "int");
     }
   
     @Override
     public RegInfo visit(TrueLiteral n, Object obj) throws Exception {
-        return new RegInfo("1", "i1", "boolean"); // Every non zero value is true
+        return new RegInfo("1", "boolean"); // Every non zero value is true
     }
   
     @Override
     public RegInfo visit(FalseLiteral n, Object obj) throws Exception {
-        return new RegInfo("0", "i1", "boolean"); // Zero value is false
+        return new RegInfo("0", "boolean"); // Zero value is false
     }
   
     @Override
     public RegInfo visit(Identifier n, Object obj) throws Exception {
 
-        if(obj != null){
-            Info info = (Info)obj;
+        Info info = (Info)obj;
+        if(info.getName() == null){
             info.setName(n.f0.toString());
             return null;  // Only the name of the indentifier was needed
         }
-        else{ // Info for register name and type will be returned only if obj is null (identifier is variable) 
+        else{ // Info for register name and type will be returned only if info name is not null (identifier is variable) 
             Scope scope = this.symTable.lookupScopeOfVar(n.f0.toString()); // A scope will always be found
             VarInfo vInfo = scope.searchVar(n.f0.toString());
+            String varIRPtr = vInfo.getIRType() + "*";
             if(scope.getType() == 'c'){
                 String regName = this.instr_gep("i8", "i8*", "%this", String.valueOf(vInfo.getOffset() + 8)); // Field is located 8 bytes (vTable size) after its offset 
-                regName = this.instr_bitcast("i8*", regName, vInfo.getIRType() + "*"); // A pointer to the allocated memory will be returned
-                return new RegInfo(regName, vInfo.getIRType() + "*", vInfo.getType()); 
+                regName = this.instr_bitcast("i8*", regName, varIRPtr); // A pointer to the allocated memory has been returned so the pointer must be converted to the real type
+                if(info.getName().equals("val")){
+                    regName = this.instr_load(varIRPtr, regName);
+                    return new RegInfo(regName, vInfo.getType()); 
+                }
+                else
+                    return new RegInfo(regName, vInfo.getType() + "*"); 
             }
-            else
-                return new RegInfo("%" + vInfo.getName(), vInfo.getIRType() + "*", vInfo.getType());  // A pointer to the stack (same with the pointer of alloca) will be returned
+            else{
+                if(info.getName().equals("val")){
+                    String regName = this.instr_load(varIRPtr, "%" + vInfo.getName()); // Variable is loaded from the stack 
+                    return new RegInfo(regName, vInfo.getType());
+                }
+                else
+                    return new RegInfo("%" + vInfo.getName(), vInfo.getType() + "*");
+            }
         }
     }
-
   
     @Override
     public RegInfo visit(ThisExpression n, Object obj) throws Exception {
         ClassInfo cInfo = this.symTable.lookupClass();
-        return new RegInfo("%this", "i8*", cInfo.getName());
+        return new RegInfo("%this", cInfo.getName());
     }
 
     /**
@@ -1651,10 +1626,8 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         String thenLabel = this.newLabel();
         String elseLabel = this.newLabel();
         String endLabel = this.newLabel();
-        RegInfo res = n.f3.accept(this, obj);
+        RegInfo res = n.f3.accept(this, null);
         String lenRegName = res.getName();
-        if(res.getIRType().equals("i32*")) // Non constant is returned
-            lenRegName = this.instr_load("i32*", lenRegName);
         String regName = this.instr_icmp("slt", "i32" , lenRegName, "0"); // Bounds checking
         this.instr_cond_br(regName, thenLabel, elseLabel);
         this.throw_out_of_bounds(thenLabel, endLabel);
@@ -1667,7 +1640,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         this.instr_br(endLabel);
         this.emit("\n" + endLabel +":\n");
         
-        return new RegInfo(regName, "i32*", "int[]");
+        return new RegInfo(regName, "int[]");
     }
 
     /**
@@ -1691,7 +1664,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         tmpReg = this.instr_bitcast("i8**", tmpReg, "i8*" ); // Pointer to the first byte of vTable
         this.instr_store("i8*", tmpReg, "i8**", regName); // vTable is stored at the beginning of the allocated memory
 
-        return new RegInfo(retRegName, "i8*", idName);
+        return new RegInfo(retRegName, idName);
     }
 
     /**
@@ -1700,13 +1673,11 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     */
     public RegInfo visit(NotExpression n, Object obj) throws Exception {
 
-        RegInfo res = n.f1.accept(this, obj);
+        RegInfo res = n.f1.accept(this, null);
         String regName = res.getName();
-        if(res.getIRType().equals("i1*")) // Non constant is returned
-            regName = this.instr_load("i1*", regName);
         regName = this.instr_math_op("xor", "i1", regName , "1"); // Complement by xor operation -> 1(true) xor 1 = 0 (false) , 0(false) xor 1 = 1 (true)
         
-        return new RegInfo(regName, "i1", "boolean");
+        return new RegInfo(regName, "boolean");
     }
 
     /**
@@ -1715,7 +1686,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     * f2 -> ")"
     */
     public RegInfo visit(BracketExpression n, Object obj) throws Exception {
-        return n.f1.accept(this, obj);
+        return n.f1.accept(this, null);
     }
 
 
@@ -1767,17 +1738,6 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         this.writer.flush();
     }
 
-    public static String toIRType(String type) {
-
-        if(type.equals("int"))
-            return "i32";
-        else if(type.equals("boolean"))
-            return "i1";
-        else if(type.equals("int[]"))
-            return "i32*";
-        else
-            return "i8*"; 
-    }
 
     public String newTempReg() {
         return "%_" + this.regCounter++;
