@@ -1238,8 +1238,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         }
         for(Node node: n.f15.nodes)
            node.accept(this, null);
-        this.emit("\n    ret i32 0\n}\n");
-        
+        this.emit("\n\n    ret i32 0\n}\n");
         this.symTable.exit(); // main() scope
         this.symTable.exit(); // MainClass scope
         
@@ -1318,10 +1317,12 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
             if(fInfo.getParameters().containsKey(varName))
                 instr_store(varType, "%." + varName , varType +"*", "%" + varName);
         }
-
         for(Node node: n.f8.nodes)
             node.accept(this, null);
-        n.f10.accept(this, null);
+        RegInfo res = n.f10.accept(this, null);
+        String regName = res.getName();
+        String regType = res.getIRType();
+        this.emit("\n    ret " + regType + " " + regName + "\n}\n");
         this.symTable.exit(); // MethodDeclaration scope
 
         return null;
@@ -1350,9 +1351,14 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     @Override
     public RegInfo visit(AssignmentStatement n, Object obj) throws Exception {
        
-        n.f0.accept(this, new Info("addr"));
-        n.f2.accept(this, null);
-       
+        RegInfo res1 = n.f0.accept(this, new Info("addr")); // Address is returned for store
+        String regName1 = res1.getName();
+        String regType1 = res1.getIRType();
+        RegInfo res2 = n.f2.accept(this, null);
+        String regName2 = res2.getName();
+        String regType2 = res2.getIRType(); 
+        this.instr_store(regType2 ,regName2, regType1, regName1); // Value is stored
+
         return null;
     }
 
@@ -1368,9 +1374,25 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     @Override
     public RegInfo visit(ArrayAssignmentStatement n, Object obj) throws Exception {
         
-        n.f0.accept(this, new Info("val"));
-        n.f2.accept(this, null);
-        n.f5.accept(this, null);
+        String trueLabel = this.newLabel();
+        String falseLabel = this.newLabel();
+        String endLabel = this.newLabel();
+        RegInfo res1 = n.f0.accept(this, new Info("val"));
+        String regName1 = res1.getName();
+        RegInfo res2 = n.f2.accept(this, null);
+        String regName2 = res2.getName();
+        String regName = this.instr_gep("i32", "i32*", regName1, String.valueOf(-1)); // Pointer to the length of the array
+        regName = this.instr_load("i32*", regName); //  Length of the array 
+        regName = this.instr_icmp("ult", "i32" , regName2, regName); // Bounds checking (unsigned check because if the signed value is negative its unsigned value is larger than every signed positive value)
+        this.instr_cond_br(regName, trueLabel, falseLabel);
+        this.emit("\n" + trueLabel +":\n");
+        regName = this.instr_gep("i32", "i32*", regName1, regName2); // A pointer to the requested element
+        RegInfo res3 = n.f5.accept(this, null);
+        String regName3 = res3.getName();
+        this.instr_store("i32" ,regName3, "i32*", regName); // Value is stored at the requested place of the array
+        this.instr_br(endLabel);
+        this.throw_out_of_bounds(falseLabel, endLabel);
+        this.emit("\n" + endLabel +":\n");
         
         return null;
     }
@@ -1598,11 +1620,12 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
        
         RegInfo caller = n.f0.accept(this, null);
         String callerName = caller.getName();
+        String callerType = caller.getType();
         //String regName = this.instr_bitcast("i8*", callerName, "i8**"); // In order to get the pointer to the beginning of the vTable
         //regName = this.instr_load("i8**", regName); // Pointer to the first byte of vTable
         Info info = new Info();
         n.f2.accept(this, info); // Info contains the name of the function
-        FunInfo fInfo = this.symTable.lookupFun(caller.getType(), info.getName());
+        FunInfo fInfo = this.symTable.lookupFun(callerType, info.getName());
         String regName = this.instr_gep("i8", "i8*", callerName, String.valueOf(fInfo.getOffset())); // Pointer to the function offset in the vTable
         regName = this.instr_bitcast("i8*", regName, "i8**"); // Function pointer fixed
         regName = this.instr_load("i8**", regName); // Function loaded
@@ -1612,13 +1635,14 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         funStr += ")*"; 
         regName = this.instr_bitcast("i8*", regName, funStr); // From i8* to function pointer
 
+        String tmpReg = newTempReg(); // Register for the result
         StringBuilder argsBuilder = new StringBuilder();
-        argsBuilder.append("    call " + fInfo.getIRType() + " " + regName + "(i8* " + callerName);
+        argsBuilder.append("    " + tmpReg + " = call " + fInfo.getIRType() + " " + regName + "(i8* " + callerName);
         if(n.f4.present())
             n.f4.accept(this, argsBuilder);
         this.emit(argsBuilder.toString() + ")\n");
         
-        return null;
+        return new RegInfo(tmpReg, fInfo.getType());
     }
 
     /**
