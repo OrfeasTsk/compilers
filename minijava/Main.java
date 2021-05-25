@@ -1386,10 +1386,20 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     */
     @Override
     public RegInfo visit(IfStatement n, Object obj) throws Exception {
-        
-        n.f2.accept(this, null);
-        n.f4.accept(this, null);
-        n.f6.accept(this, null);
+
+        String trueLabel = this.newLabel();
+        String falseLabel = this.newLabel();
+        String endLabel = this.newLabel();
+        RegInfo res = n.f2.accept(this, null);
+        String regName = res.getName();
+        this.instr_cond_br(regName, trueLabel, falseLabel); // Condition check
+        this.emit("\n" + trueLabel +":\n");
+        n.f4.accept(this, null); // Then body
+        this.instr_br(endLabel); 
+        this.emit("\n" + falseLabel +":\n");
+        n.f6.accept(this, null); // Else body
+        this.instr_br(endLabel);
+        this.emit("\n" + endLabel +":\n");
 
         return null;
     }
@@ -1404,8 +1414,18 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     @Override
     public RegInfo visit(WhileStatement n, Object obj) throws Exception {
 
-        n.f2.accept(this, null);
-        n.f4.accept(this, null);
+        String trueLabel = this.newLabel();
+        String startLabel = this.newLabel();
+        String endLabel = this.newLabel();
+        this.instr_br(startLabel);  // Loop entrance
+        this.emit("\n" + startLabel +":\n");  // Start of the Loop 
+        RegInfo res = n.f2.accept(this, null);
+        String regName = res.getName();
+        this.instr_cond_br(regName, trueLabel, endLabel); // Condition check
+        this.emit("\n" + trueLabel +":\n");
+        n.f4.accept(this, null); // Body of the loop
+        this.instr_br(startLabel); // Next iteration
+        this.emit("\n" + endLabel +":\n");
 
         return null;
     }
@@ -1435,20 +1455,20 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     @Override
     public RegInfo visit(AndExpression n, Object obj) throws Exception {
 
-        String thenLabel = this.newLabel();
-        String elseLabel = this.newLabel();
+        String trueLabel = this.newLabel();
+        String falseLabel = this.newLabel();
         String endLabel = this.newLabel();
         RegInfo res1 = n.f0.accept(this, null);
         String regName1 = res1.getName();
-        this.instr_cond_br(regName1, thenLabel, elseLabel);
-        this.emit("\n" + thenLabel +":\n");  // Left expression is true so the result depends on the right expression
-        RegInfo res2 = n.f2.accept(this, null);
+        this.instr_cond_br(regName1, trueLabel, falseLabel);
+        this.emit("\n" + trueLabel +":\n");  
+        RegInfo res2 = n.f2.accept(this, null); // The first expression is true so the result depends on the other expression
         String regName2 = res2.getName();
         this.instr_br(endLabel);
-        this.emit("\n" + elseLabel +":\n");
+        this.emit("\n" + falseLabel +":\n");
         this.instr_br(endLabel);
         this.emit("\n" + endLabel +":\n");
-        regName1 = this.instr_phi("i1", regName2, thenLabel, regName1, elseLabel); // Right result if control flow entered the "then" block and left result if control flow entered the "else" block
+        regName1 = this.instr_phi("i1", regName2, trueLabel, regName1, falseLabel); // Right result if control flow entered the "then" block and left result if control flow entered the "else" block
 
         return new RegInfo(regName1, "boolean");
      }
@@ -1529,8 +1549,8 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     */
     public RegInfo visit(ArrayLookup n, Object obj) throws Exception {
 
-        String thenLabel = this.newLabel();
-        String elseLabel = this.newLabel();
+        String trueLabel = this.newLabel();
+        String falseLabel = this.newLabel();
         String endLabel = this.newLabel();
         RegInfo res1 = n.f0.accept(this, null);
         String regName1 = res1.getName();
@@ -1539,12 +1559,12 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         String regName = this.instr_gep("i32", "i32*", regName1, String.valueOf(-1)); // Pointer to the length of the array
         regName = this.instr_load("i32*", regName); //  Length of the array 
         regName = this.instr_icmp("ult", "i32" , regName2, regName); // Bounds checking (unsigned check because if the signed value is negative its unsigned value is larger than every signed positive value)
-        this.instr_cond_br(regName, thenLabel, elseLabel);
-        this.emit("\n" + thenLabel +":\n");
+        this.instr_cond_br(regName, trueLabel, falseLabel);
+        this.emit("\n" + trueLabel +":\n");
         regName = this.instr_gep("i32", "i32*", regName1, regName2); // A pointer to the requested element
         regName = this.instr_load("i32*", regName); // Element of the array is loaded because the array lookup expression always returns a value in minijava
         this.instr_br(endLabel);
-        this.throw_out_of_bounds(elseLabel, endLabel);
+        this.throw_out_of_bounds(falseLabel, endLabel);
         this.emit("\n" + endLabel +":\n");
         
         return new RegInfo(regName, "int");
@@ -1723,15 +1743,15 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     @Override
     public RegInfo visit(ArrayAllocationExpression n, Object obj) throws Exception {   
          
-        String thenLabel = this.newLabel();
-        String elseLabel = this.newLabel();
+        String trueLabel = this.newLabel();
+        String falseLabel = this.newLabel();
         String endLabel = this.newLabel();
         RegInfo res = n.f3.accept(this, null);
         String lenRegName = res.getName();
         String regName = this.instr_icmp("slt", "i32" , lenRegName, "0"); // Bounds checking
-        this.instr_cond_br(regName, thenLabel, elseLabel);
-        this.throw_out_of_bounds(thenLabel, endLabel);
-        this.emit("\n" + elseLabel +":\n");
+        this.instr_cond_br(regName, trueLabel, falseLabel);
+        this.throw_out_of_bounds(trueLabel, endLabel);
+        this.emit("\n" + falseLabel +":\n");
         lenRegName = this.instr_math_op("add", "i32" , lenRegName, "1"); // 1 extra byte for saving the array length
         regName = this.calloc_call(String.valueOf(4), lenRegName); // Allocation of 4 * length bytes (4 ints)
         regName = this.instr_bitcast("i8*", regName, "i32*"); // Cast to i32* (int*)
@@ -1900,8 +1920,8 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         return tmpReg; // Result is stored at tmpReg
     }
 
-    public void instr_cond_br(String regName, String thenLabel, String elseLabel ) {
-        this.emit("    br i1 " + regName + ", label " + thenLabel + ", label " + elseLabel + "\n");
+    public void instr_cond_br(String regName, String trueLabel, String falseLabel ) {
+        this.emit("    br i1 " + regName + ", label " + trueLabel + ", label " + falseLabel + "\n");
     }
 
     public void instr_br(String label) {
