@@ -43,7 +43,7 @@ public class Main {
                 writer.flush();
                 symTable.exit();
 
-                PrintWriter irWriter = new PrintWriter(System.out);
+                PrintWriter irWriter = new PrintWriter(new File("./LLfiles/" + args[i].replace(".java",".ll")));
                 IRCreator irCreator= new IRCreator(globalScope, symTable, irWriter); // Initialization of IR (vtable creation, common constants, common declarations and common definitions)
                 root.accept(irCreator, null);
 
