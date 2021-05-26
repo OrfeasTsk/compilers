@@ -1621,12 +1621,12 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         RegInfo caller = n.f0.accept(this, null);
         String callerName = caller.getName();
         String callerType = caller.getType();
-        //String regName = this.instr_bitcast("i8*", callerName, "i8**"); // In order to get the pointer to the beginning of the vTable
-        //regName = this.instr_load("i8**", regName); // Pointer to the first byte of vTable
+        String regName = this.instr_bitcast("i8*", callerName, "i8**"); // In order to get the pointer to the beginning of the vTable
+        regName = this.instr_load("i8**", regName); // Pointer to the first byte of vTable
         Info info = new Info();
         n.f2.accept(this, info); // Info contains the name of the function
         FunInfo fInfo = this.symTable.lookupFun(callerType, info.getName());
-        String regName = this.instr_gep("i8", "i8*", callerName, String.valueOf(fInfo.getOffset())); // Pointer to the function offset in the vTable
+        regName = this.instr_gep("i8", "i8*", regName, String.valueOf(fInfo.getOffset())); // Pointer to the function offset in the vTable
         regName = this.instr_bitcast("i8*", regName, "i8**"); // Function pointer fixed
         regName = this.instr_load("i8**", regName); // Function loaded
         String funStr = fInfo.getIRType() + " (i8*";
