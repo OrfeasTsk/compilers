@@ -1463,7 +1463,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     public RegInfo visit(PrintStatement n, Object obj) throws Exception {
     
         RegInfo res = n.f2.accept(this, null);
-        this.emit("    call void (i32) @print_int(i32 "+ res.getName() +")");
+        this.emit("    call void (i32) @print_int(i32 "+ res.getName() +")\n");
         
         return null;
     }
