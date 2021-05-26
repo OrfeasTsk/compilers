@@ -43,7 +43,7 @@ public class Main {
                 writer.flush();
                 symTable.exit();
 
-                PrintWriter irWriter = new PrintWriter(new File("./LLfiles/" + args[i].replace(".java",".ll")));
+                PrintWriter irWriter = new PrintWriter(new File("./LLfiles/" + args[i].substring(args[i].lastIndexOf("/") + 1).replace(".java",".ll")));
                 IRCreator irCreator= new IRCreator(globalScope, symTable, irWriter); // Initialization of IR (vtable creation, common constants, common declarations and common definitions)
                 root.accept(irCreator, null);
 
@@ -1313,9 +1313,9 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
             String varName = vInfo.getName();
             String varType = vInfo.getIRType();
             this.emit("    ");
-            instr_alloca(varType, "%" + varName);
+            this.instr_alloca(varType, "%" + varName);
             if(fInfo.getParameters().containsKey(varName))
-                instr_store(varType, "%." + varName , varType +"*", "%" + varName);
+                this.instr_store(varType, "%." + varName , varType +"*", "%" + varName);
         }
         for(Node node: n.f8.nodes)
             node.accept(this, null);
@@ -1945,11 +1945,11 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     }
 
     public void instr_cond_br(String regName, String trueLabel, String falseLabel ) {
-        this.emit("    br i1 " + regName + ", label " + trueLabel + ", label " + falseLabel + "\n");
+        this.emit("    br i1 " + regName + ", label %" + trueLabel + ", label %" + falseLabel + "\n");
     }
 
     public void instr_br(String label) {
-        this.emit("    br label " + label + "\n");
+        this.emit("    br label %" + label + "\n");
     }
 
     public String instr_gep(String type1, String type2, String ptr, String idx) {
@@ -1960,7 +1960,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
 
     public String instr_phi(String type, String optReg1, String optLab1, String optReg2, String optLab2) {
         String tmpReg = this.newTempReg();
-        this.emit("    " + tmpReg +" = phi "+ type +" ["+ optReg1 +", "+ optLab1 + "], [" + optReg2 +", "+ optLab2 + "]\n");
+        this.emit("    " + tmpReg +" = phi "+ type +" ["+ optReg1 +", %"+ optLab1 + "], [" + optReg2 +", %"+ optLab2 + "]\n");
         return tmpReg; // Result is stored at tmpReg
     }
     

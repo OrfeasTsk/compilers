@@ -20,7 +20,7 @@ public class RegInfo extends Info {
         else if(this.type.equals("boolean"))
             return "i1";
         else if(this.type.equals("boolean*"))
-            return "i1**";
+            return "i1*";
         else{
             if(this.type.contains("*")) 
                 return "i8**";
