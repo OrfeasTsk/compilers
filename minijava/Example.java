@@ -9,6 +9,7 @@ class Main{
 
 
 class A{
+    int[] x;
     int i;
     boolean flag;
     int j;
@@ -20,7 +21,7 @@ class A{
 class B extends A{
     A type;
     int k;
-    public int foo() { return 1; }
+    public int foo() { int y; y = 1-10; return y; }
     public boolean bla(int i, int j) { return true; }
-    public int bar() {return 25;}
+    public int bar() { x = new int[2]; x[1] = 2; return x[2];}
 }

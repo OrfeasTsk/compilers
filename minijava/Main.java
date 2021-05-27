@@ -1776,10 +1776,10 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         this.instr_cond_br(regName, trueLabel, falseLabel);
         this.throw_out_of_bounds(trueLabel, endLabel);
         this.emit("\n" + falseLabel +":\n");
-        lenRegName = this.instr_math_op("add", "i32" , lenRegName, "1"); // 1 extra byte for saving the array length
-        regName = this.calloc_call(String.valueOf(4), lenRegName); // Allocation of 4 * length bytes (4 ints)
+        String newLenRegName = this.instr_math_op("add", "i32" , lenRegName, "1"); // 1 extra byte for saving the array length
+        regName = this.calloc_call(String.valueOf(4), newLenRegName); // Allocation of 4 * length bytes (4 ints)
         regName = this.instr_bitcast("i8*", regName, "i32*"); // Cast to i32* (int*)
-        this.instr_store("i32", lenRegName, "i32*", regName); // Length saved at the beginning of the array
+        this.instr_store("i32", lenRegName, "i32*", regName); // Real length is saved at the beginning of the array
         regName = this.instr_gep("i32", "i32*", regName, String.valueOf(1)); // Array pointer has been moved to the real start of the array
         this.instr_br(endLabel);
         this.emit("\n" + endLabel +":\n");
