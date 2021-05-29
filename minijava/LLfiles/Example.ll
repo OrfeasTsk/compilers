@@ -1,6 +1,6 @@
 @.Main_vtable = global [0 x i8*] []
-@.A_vtable = global [3 x i8*] [i8* bitcast (i32 (i8*)* @A.foo to i8*), i8* bitcast (i1 (i8*,i32,i32)* @A.fa to i8*), i8* bitcast (i32 (i8*)* @A.bar to i8*)]
-@.B_vtable = global [4 x i8*] [i8* bitcast (i32 (i8*)* @B.foo to i8*), i8* bitcast (i1 (i8*,i32,i32)* @A.fa to i8*), i8* bitcast (i32 (i8*)* @B.bar to i8*), i8* bitcast (i1 (i8*,i32,i32)* @B.bla to i8*)]
+@.A_vtable = global [4 x i8*] [i8* bitcast (i32 (i8*)* @A.foo to i8*), i8* bitcast (i1 (i8*,i32,i32)* @A.fa to i8*), i8* bitcast (i32 (i8*)* @A.bar to i8*), i8* bitcast (i32 (i8*)* @A.test to i8*)]
+@.B_vtable = global [5 x i8*] [i8* bitcast (i32 (i8*)* @B.foo to i8*), i8* bitcast (i1 (i8*,i32,i32)* @A.fa to i8*), i8* bitcast (i32 (i8*)* @B.bar to i8*), i8* bitcast (i32 (i8*)* @A.test to i8*), i8* bitcast (i1 (i8*,i32,i32)* @B.bla to i8*)]
 
 
 declare i8* @calloc(i32, i32)
@@ -24,25 +24,30 @@ define void @throw_oob() {
 
 define i32 @main() { 
     %x = alloca i32
+    store i32 0, i32* %x
     %a = alloca i8*
+    %_0 = call i8* @calloc(i32 0, i32 25)
+    store i8* %_0, i8** %a
     %b = alloca i8*
-    %_0 = call i8* @calloc(i32 1, i32 37)
-    %_1 = bitcast i8* %_0 to i8**
-    %_2 = getelementptr [4 x i8*], [4 x i8*]* @.B_vtable, i32 0, i32 0
-    %_3 = bitcast i8** %_2 to i8*
-    store i8* %_3, i8** %_1
-    store i8* %_0, i8** %b
-    %_4 = load i8*, i8** %b
-    store i8* %_4, i8** %a
-    %_5 = load i8*, i8** %a
-    %_6 = bitcast i8* %_5 to i8**
-    %_7 = load i8*, i8** %_6
-    %_8 = getelementptr i8, i8* %_7, i32 0
-    %_9 = bitcast i8* %_8 to i8**
-    %_10 = load i8*, i8** %_9
-    %_11 = bitcast i8* %_10 to i32 (i8*)*
-    %_12 = call i32 %_11(i8* %_5)
-    call void (i32) @print_int(i32 %_12)
+    %_1 = call i8* @calloc(i32 0, i32 37)
+    store i8* %_1, i8** %b
+    %_2 = call i8* @calloc(i32 1, i32 37)
+    %_3 = bitcast i8* %_2 to i8**
+    %_4 = getelementptr [5 x i8*], [5 x i8*]* @.B_vtable, i32 0, i32 0
+    %_5 = bitcast i8** %_4 to i8*
+    store i8* %_5, i8** %_3
+    store i8* %_2, i8** %b
+    %_6 = load i8*, i8** %b
+    store i8* %_6, i8** %a
+    %_7 = load i8*, i8** %a
+    %_8 = bitcast i8* %_7 to i8**
+    %_9 = load i8*, i8** %_8
+    %_10 = getelementptr i8, i8* %_9, i32 24
+    %_11 = bitcast i8* %_10 to i8**
+    %_12 = load i8*, i8** %_11
+    %_13 = bitcast i8* %_12 to i32 (i8*)*
+    %_14 = call i32 %_13(i8* %_7)
+    call void (i32) @print_int(i32 %_14)
 
 
     ret i32 0
@@ -59,23 +64,50 @@ define i1 @A.fa(i8* %this, i32 %.i, i32 %.j) {
     %j = alloca i32
     store i32 %.j, i32* %j
     %x = alloca i8*
+    %_0 = call i8* @calloc(i32 0, i32 37)
+    store i8* %_0, i8** %x
     %y = alloca i32
     store i32 0, i32* %y
-    %_0 = load i8*, i8** %x
-    %_1 = bitcast i8* %_0 to i8**
-    %_2 = load i8*, i8** %_1
-    %_3 = getelementptr i8, i8* %_2, i32 24
-    %_4 = bitcast i8* %_3 to i8**
-    %_5 = load i8*, i8** %_4
-    %_6 = bitcast i8* %_5 to i1 (i8*, i32, i32)*
-    %_7 = call i1 %_6(i8* %_0, i32 5, i32 5)
+    %_1 = load i8*, i8** %x
+    %_2 = bitcast i8* %_1 to i8**
+    %_3 = load i8*, i8** %_2
+    %_4 = getelementptr i8, i8* %_3, i32 32
+    %_5 = bitcast i8* %_4 to i8**
+    %_6 = load i8*, i8** %_5
+    %_7 = bitcast i8* %_6 to i1 (i8*, i32, i32)*
+    %_8 = call i1 %_7(i8* %_1, i32 5, i32 5)
 
-    ret i1 %_7
+    ret i1 %_8
 }
 
 define i32 @A.bar(i8* %this) {
 
     ret i32 0
+}
+
+define i32 @A.test(i8* %this) {
+    %x = alloca i32
+    store i32 0, i32* %x
+    %_0 = getelementptr i8, i8* %this, i32 20
+    %_1 = bitcast i8* %_0 to i1*
+    store i1 0, i1* %_1
+    %_2 = getelementptr i8, i8* %this, i32 20
+    %_3 = bitcast i8* %_2 to i1*
+    %_4 = load i1, i1* %_3
+    br i1 %_4, label %label0, label %label1
+
+label0:
+    store i32 1, i32* %x
+    br label %label2
+
+label1:
+    store i32 0, i32* %x
+    br label %label2
+
+label2:
+    %_5 = load i32, i32* %x
+
+    ret i32 %_5
 }
 
 define i32 @B.foo(i8* %this) {
@@ -107,7 +139,7 @@ label0:
 
 label1:
     %_3 = add i32 2, 1
-    %_4 = call i8* @calloc(i32 4, i32 %_3)
+    %_4 = call i8* @calloc(i32 %_3, i32 4)
     %_5 = bitcast i8* %_4 to i32*
     store i32 2, i32* %_5
     %_6 = getelementptr i32, i32* %_5, i32 1

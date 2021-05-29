@@ -1859,24 +1859,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         return n.f1.accept(this, null);
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    // HELPER FUNCTIONS
 
     public void IRInit() throws Exception {
 
