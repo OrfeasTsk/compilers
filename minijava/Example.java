@@ -2,7 +2,11 @@ class Main{
 
     public static void main(String[] args){
         int x;
-        System.out.println(new B().bar());
+        A a;
+        B b;
+        b = new B();
+        a = b;
+        System.out.println(a.foo());
     }
 
 }
@@ -21,7 +25,7 @@ class A{
 class B extends A{
     A type;
     int k;
-    public int foo() { int y; y = 1-10; return y; }
+    public int foo() { int y; return y; }
     public boolean bla(int i, int j) { return true; }
     public int bar() { x = new int[2]; x[1] = 2; return x[2];}
 }

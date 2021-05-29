@@ -24,19 +24,25 @@ define void @throw_oob() {
 
 define i32 @main() { 
     %x = alloca i32
+    %a = alloca i8*
+    %b = alloca i8*
     %_0 = call i8* @calloc(i32 1, i32 37)
     %_1 = bitcast i8* %_0 to i8**
     %_2 = getelementptr [4 x i8*], [4 x i8*]* @.B_vtable, i32 0, i32 0
     %_3 = bitcast i8** %_2 to i8*
     store i8* %_3, i8** %_1
-    %_4 = bitcast i8* %_0 to i8**
-    %_5 = load i8*, i8** %_4
-    %_6 = getelementptr i8, i8* %_5, i32 16
-    %_7 = bitcast i8* %_6 to i8**
-    %_8 = load i8*, i8** %_7
-    %_9 = bitcast i8* %_8 to i32 (i8*)*
-    %_10 = call i32 %_9(i8* %_0)
-    call void (i32) @print_int(i32 %_10)
+    store i8* %_0, i8** %b
+    %_4 = load i8*, i8** %b
+    store i8* %_4, i8** %a
+    %_5 = load i8*, i8** %a
+    %_6 = bitcast i8* %_5 to i8**
+    %_7 = load i8*, i8** %_6
+    %_8 = getelementptr i8, i8* %_7, i32 0
+    %_9 = bitcast i8* %_8 to i8**
+    %_10 = load i8*, i8** %_9
+    %_11 = bitcast i8* %_10 to i32 (i8*)*
+    %_12 = call i32 %_11(i8* %_5)
+    call void (i32) @print_int(i32 %_12)
 
 
     ret i32 0
@@ -54,6 +60,7 @@ define i1 @A.fa(i8* %this, i32 %.i, i32 %.j) {
     store i32 %.j, i32* %j
     %x = alloca i8*
     %y = alloca i32
+    store i32 0, i32* %y
     %_0 = load i8*, i8** %x
     %_1 = bitcast i8* %_0 to i8**
     %_2 = load i8*, i8** %_1
@@ -73,11 +80,10 @@ define i32 @A.bar(i8* %this) {
 
 define i32 @B.foo(i8* %this) {
     %y = alloca i32
-    %_0 = sub i32 1, 10
-    store i32 %_0, i32* %y
-    %_1 = load i32, i32* %y
+    store i32 0, i32* %y
+    %_0 = load i32, i32* %y
 
-    ret i32 %_1
+    ret i32 %_0
 }
 
 define i1 @B.bla(i8* %this, i32 %.i, i32 %.j) {

@@ -1229,12 +1229,25 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         while(varIt.hasNext()){
             vInfo = varIt.next();
             String varName = vInfo.getName();
-            String varType = vInfo.getIRType();
+            String varType = vInfo.getType();
+            String varIRType = vInfo.getIRType();
             this.emit("    ");
-            instr_alloca(varType, "%" + varName);
+            this.instr_alloca(varIRType, "%" + varName);
             /*if(fInfo.getParameters().containsKey(varName)){
-                instr_store(varType, "%." + varName , varType +"*", "%" + varName);
-            }*/
+                instr_store(varIRType, "%." + varName , varIRType +"*", "%" + varName);
+            } else*/
+            if(varType.equals("int") || varType.equals("boolean"))
+                this.instr_store(varIRType, "0", varIRType + "*", "%" + varName); // Zero initialization
+            else if(varType.equals("int[]")){
+                String regName = this.calloc_call(String.valueOf(0), String.valueOf(4)); // Int array with 0 items
+                regName = this.instr_bitcast("i8*", regName, "i32*"); // Cast to i32* (int*)
+                this.instr_store("i32*", regName, "i32**", "%" + varName);
+            }
+            else{
+                ClassInfo cInfo = this.symTable.lookupClass(varType);
+                String regName = this.calloc_call("0", String.valueOf(cInfo.getCurrVarOffset() + 8)); // Object size equals to the size of the vTable pointer (8 bytes) plus the size of all its fields (current offset)
+                this.instr_store("i8*", regName, "i8**", "%" + varName);
+            }
         }
         for(Node node: n.f15.nodes)
            node.accept(this, null);
@@ -1311,11 +1324,24 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         this.instr_define(fInfo);
         for(VarInfo vInfo : funScope.getVariables().values()){
             String varName = vInfo.getName();
-            String varType = vInfo.getIRType();
+            String varType = vInfo.getType();
+            String varIRType = vInfo.getIRType();
             this.emit("    ");
-            this.instr_alloca(varType, "%" + varName);
-            if(fInfo.getParameters().containsKey(varName))
-                this.instr_store(varType, "%." + varName , varType +"*", "%" + varName);
+            this.instr_alloca(varIRType, "%" + varName);
+            if(fInfo.getParameters().containsKey(varName)) // Variable is parameter
+                this.instr_store(varIRType, "%." + varName , varIRType +"*", "%" + varName);
+            else if(varType.equals("int") || varType.equals("boolean"))
+                this.instr_store(varIRType, "0", varIRType + "*", "%" + varName); // Zero initialization
+            else if(varType.equals("int[]")){
+                String regName = this.calloc_call(String.valueOf(0), String.valueOf(4)); // Int array with 0 items
+                regName = this.instr_bitcast("i8*", regName, "i32*"); // Cast to i32* (int*)
+                this.instr_store("i32*", regName, "i32**", "%" + varName);
+            }
+            else{
+                ClassInfo cInfo = this.symTable.lookupClass(varType);
+                String regName = this.calloc_call("0", String.valueOf(cInfo.getCurrVarOffset() + 8)); // Object size equals to the size of the vTable pointer (8 bytes) plus the size of all its fields (current offset)
+                this.instr_store("i8*", regName, "i8**", "%" + varName);
+            }
         }
         for(Node node: n.f8.nodes)
             node.accept(this, null);
@@ -1777,7 +1803,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         this.throw_out_of_bounds(trueLabel, endLabel);
         this.emit("\n" + falseLabel +":\n");
         String newLenRegName = this.instr_math_op("add", "i32" , lenRegName, "1"); // 1 extra byte for saving the array length
-        regName = this.calloc_call(String.valueOf(4), newLenRegName); // Allocation of 4 * length bytes (4 ints)
+        regName = this.calloc_call(newLenRegName, String.valueOf(4)); // Allocation of 4 * length bytes (4 ints)
         regName = this.instr_bitcast("i8*", regName, "i32*"); // Cast to i32* (int*)
         this.instr_store("i32", lenRegName, "i32*", regName); // Real length is saved at the beginning of the array
         regName = this.instr_gep("i32", "i32*", regName, String.valueOf(1)); // Array pointer has been moved to the real start of the array
