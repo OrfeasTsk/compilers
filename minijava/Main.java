@@ -1505,18 +1505,21 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
 
         String trueLabel = this.newLabel();
         String falseLabel = this.newLabel();
+        String restLabel = this.newLabel();
         String endLabel = this.newLabel();
         RegInfo res1 = n.f0.accept(this, null);
         String regName1 = res1.getName();
         this.instr_cond_br(regName1, trueLabel, falseLabel);
         this.emit("\n" + trueLabel +":\n");  
         RegInfo res2 = n.f2.accept(this, null); // The first expression is true so the result depends on the other expression
+        this.instr_br(restLabel); // Some other labels might have been preceded before (so a jump to this fixed label makes visible the previous assignments for phi)
+        this.emit("\n" + restLabel +":\n");  
         String regName2 = res2.getName();
         this.instr_br(endLabel);
         this.emit("\n" + falseLabel +":\n");
         this.instr_br(endLabel);
         this.emit("\n" + endLabel +":\n");
-        regName1 = this.instr_phi("i1", regName2, trueLabel, regName1, falseLabel); // Right result if control flow entered the "then" block and left result if control flow entered the "else" block
+        regName1 = this.instr_phi("i1", regName2, restLabel, regName1, falseLabel); // Right result if control flow entered the "then" block and left result if control flow entered the "else" block
 
         return new RegInfo(regName1, "boolean");
      }

@@ -20,7 +20,7 @@ class A{
     public int foo() { return 2; }
     public boolean fa(int i, int j) { B x; int y; return x.bla(5,5); }
     public int bar() {return 0;}
-    public int test(int[] k) {boolean j; j = ((k[2]) < 22) && ((k[2]) < 23); return i; }
+    public int test(int[] k) {boolean j; k[2] = 21; if((((k[2]) < 22) && ((k[2]) < 23)) && (((k[2]) < 22) && ((k[2]) < 23))) i = 1; else i = 0; return i; }
 }
 
 class B extends A{
