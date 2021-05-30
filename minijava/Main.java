@@ -1872,7 +1872,10 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
 
         Iterator<ClassInfo> classIt = this.globalScope.getClasses().values().iterator();
         ClassInfo cInfo = classIt.next(); // MainClass
-        this.emit("@." + cInfo.getName() + "_vtable = global [0 x i8*] []\n"); // MainClass has only the pseudo static main function which cannot be part of vtable
+        VTable vTableMain = new VTable(cInfo);
+        cInfo.setVTable(vTableMain);
+        this.emit(vTableMain.toString()); // MainClass has only the pseudo static main function which cannot be part of vtable
+        //this.emit("@." + cInfo.getName() + "_vtable = global [0 x i8*] []\n"); 
         while(classIt.hasNext()){ 
             cInfo = classIt.next();
             this.symTable.UniqueFunNames(cInfo);

@@ -31,9 +31,9 @@ define i32 @main() {
     %blah = alloca i8*
     %_0 = call i8* @calloc(i32 0, i32 8)
     store i8* %_0, i8** %blah
-    %_1 = call i8* @calloc(i32 1, i32 38)
+    %_1 = call i8* @calloc(i32 1, i32 8)
     %_2 = bitcast i8* %_1 to i8**
-    %_3 = getelementptr [1 x i8*], [1 x i8*]* @.B_vtable, i32 0, i32 0
+    %_3 = getelementptr [0 x i8*], [0 x i8*]* @.Blah_vtable, i32 0, i32 0
     %_4 = bitcast i8** %_3 to i8*
     store i8* %_4, i8** %_2
     store i8* %_1, i8** %blah
