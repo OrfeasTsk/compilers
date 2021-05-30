@@ -1440,6 +1440,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         String endLabel = this.newLabel();
         RegInfo res = n.f2.accept(this, null);
         String regName = res.getName();
+        regName = this.instr_trunc("i8", regName, "i1");
         this.instr_cond_br(regName, trueLabel, falseLabel); // Condition check
         this.emit("\n" + trueLabel +":\n");
         n.f4.accept(this, null); // Then body
@@ -1469,6 +1470,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         this.emit("\n" + startLabel +":\n");  // Start of the Loop 
         RegInfo res = n.f2.accept(this, null);
         String regName = res.getName();
+        regName = this.instr_trunc("i8", regName, "i1");
         this.instr_cond_br(regName, trueLabel, endLabel); // Condition check
         this.emit("\n" + trueLabel +":\n");
         n.f4.accept(this, null); // Body of the loop
@@ -1509,7 +1511,8 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         String endLabel = this.newLabel();
         RegInfo res1 = n.f0.accept(this, null);
         String regName1 = res1.getName();
-        this.instr_cond_br(regName1, trueLabel, falseLabel);
+        String cond = this.instr_trunc("i8", regName1, "i1");
+        this.instr_cond_br(cond, trueLabel, falseLabel);
         this.emit("\n" + trueLabel +":\n");  
         RegInfo res2 = n.f2.accept(this, null); // The first expression is true so the result depends on the other expression
         this.instr_br(restLabel); // Some other labels might have been preceded before (so a jump to this fixed label makes visible the previous assignments for phi)
@@ -1519,7 +1522,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         this.emit("\n" + falseLabel +":\n");
         this.instr_br(endLabel);
         this.emit("\n" + endLabel +":\n");
-        regName1 = this.instr_phi("i1", regName2, restLabel, regName1, falseLabel); // Right result if control flow entered the "then" block and left result if control flow entered the "else" block
+        regName1 = this.instr_phi("i8", regName2, restLabel, regName1, falseLabel); // Right result if the control flow entered the "rest" block and left result if the control flow entered the "false" block
 
         return new RegInfo(regName1, "boolean");
      }
@@ -1537,6 +1540,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         RegInfo res2 = n.f2.accept(this, null);
         String regName2 = res2.getName();
         regName1 = this.instr_icmp("slt", "i32" , regName1, regName2); 
+        regName1 = this.instr_zext("i1", regName1, "i8"); // Conversion to i8 for compatibility with the other booleans
         
         return new RegInfo(regName1, "boolean");
     }
@@ -1848,7 +1852,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
 
         RegInfo res = n.f1.accept(this, null);
         String regName = res.getName();
-        regName = this.instr_math_op("xor", "i1", regName , "1"); // Complement by xor operation -> 1(true) xor 1 = 0 (false) , 0(false) xor 1 = 1 (true)
+        regName = this.instr_math_op("xor", "i8", regName , "1"); // Complement by xor operation -> 1(true) xor 1 = 0 (false) , 0(false) xor 1 = 1 (true)
         
         return new RegInfo(regName, "boolean");
     }
@@ -1956,7 +1960,7 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
         return tmpReg; // Result is stored at tmpReg
     }
 
-    public void instr_cond_br(String regName, String trueLabel, String falseLabel ) {
+    public void instr_cond_br(String regName, String trueLabel, String falseLabel) {
         this.emit("    br i1 " + regName + ", label %" + trueLabel + ", label %" + falseLabel + "\n");
     }
 
@@ -1973,6 +1977,18 @@ class IRCreator extends GJDepthFirst<RegInfo, Object> {
     public String instr_phi(String type, String optReg1, String optLab1, String optReg2, String optLab2) {
         String tmpReg = this.newTempReg();
         this.emit("    " + tmpReg +" = phi "+ type +" ["+ optReg1 +", %"+ optLab1 + "], [" + optReg2 +", %"+ optLab2 + "]\n");
+        return tmpReg; // Result is stored at tmpReg
+    }
+
+    public String instr_trunc(String type1, String regName1, String type2) {
+        String tmpReg = this.newTempReg();
+        this.emit("    " + tmpReg + " = trunc "+ type1 + " "+ regName1 + " to "+ type2 +"\n");
+        return tmpReg; // Result is stored at tmpReg
+    }
+
+    public String instr_zext(String type1, String regName1, String type2) {
+        String tmpReg = this.newTempReg();
+        this.emit("    " + tmpReg + " = zext "+ type1 + " "+ regName1 + " to "+ type2 +"\n");
         return tmpReg; // Result is stored at tmpReg
     }
     

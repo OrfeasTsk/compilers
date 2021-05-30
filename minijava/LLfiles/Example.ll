@@ -1,6 +1,6 @@
 @.Main_vtable = global [0 x i8*] []
-@.A_vtable = global [4 x i8*] [i8* bitcast (i32 (i8*)* @A.foo to i8*), i8* bitcast (i1 (i8*,i32,i32)* @A.fa to i8*), i8* bitcast (i32 (i8*)* @A.bar to i8*), i8* bitcast (i32 (i8*,i32*)* @A.test to i8*)]
-@.B_vtable = global [5 x i8*] [i8* bitcast (i32 (i8*)* @B.foo to i8*), i8* bitcast (i1 (i8*,i32,i32)* @A.fa to i8*), i8* bitcast (i32 (i8*)* @B.bar to i8*), i8* bitcast (i32 (i8*,i32*)* @A.test to i8*), i8* bitcast (i1 (i8*,i32,i32)* @B.bla to i8*)]
+@.A_vtable = global [4 x i8*] [i8* bitcast (i32 (i8*)* @A.foo to i8*), i8* bitcast (i8 (i8*,i32,i32)* @A.fa to i8*), i8* bitcast (i32 (i8*)* @A.bar to i8*), i8* bitcast (i32 (i8*,i32*)* @A.test to i8*)]
+@.B_vtable = global [5 x i8*] [i8* bitcast (i32 (i8*)* @B.foo to i8*), i8* bitcast (i8 (i8*,i32,i32)* @A.fa to i8*), i8* bitcast (i32 (i8*)* @B.bar to i8*), i8* bitcast (i32 (i8*,i32*)* @A.test to i8*), i8* bitcast (i8 (i8*,i32,i32)* @B.bla to i8*)]
 
 
 declare i8* @calloc(i32, i32)
@@ -74,7 +74,7 @@ define i32 @A.foo(i8* %this) {
     ret i32 2
 }
 
-define i1 @A.fa(i8* %this, i32 %.i, i32 %.j) {
+define i8 @A.fa(i8* %this, i32 %.i, i32 %.j) {
     %i = alloca i32
     store i32 %.i, i32* %i
     %j = alloca i32
@@ -90,10 +90,10 @@ define i1 @A.fa(i8* %this, i32 %.i, i32 %.j) {
     %_4 = getelementptr i8, i8* %_3, i32 32
     %_5 = bitcast i8* %_4 to i8**
     %_6 = load i8*, i8** %_5
-    %_7 = bitcast i8* %_6 to i1 (i8*, i32, i32)*
-    %_8 = call i1 %_7(i8* %_1, i32 5, i32 5)
+    %_7 = bitcast i8* %_6 to i8 (i8*, i32, i32)*
+    %_8 = call i8 %_7(i8* %_1, i32 5, i32 5)
 
-    ret i1 %_8
+    ret i8 %_8
 }
 
 define i32 @A.bar(i8* %this) {
@@ -104,8 +104,8 @@ define i32 @A.bar(i8* %this) {
 define i32 @A.test(i8* %this, i32* %.k) {
     %k = alloca i32*
     store i32* %.k, i32** %k
-    %j = alloca i1
-    store i1 0, i1* %j
+    %j = alloca i8
+    store i8 0, i8* %j
     %_0 = load i32*, i32** %k
     %_1 = getelementptr i32, i32* %_0, i32 -1
     %_2 = load i32, i32* %_1
@@ -122,30 +122,15 @@ label1:
     br label %label2
 
 label2:
-    %_5 = icmp slt i32 5, 0
-    br i1 %_5, label %label17, label %label18
-
-label17:
-    call void @throw_oob()
-    br label %label19
-
-label18:
-    %_6 = add i32 5, 1
-    %_7 = call i8* @calloc(i32 %_6, i32 4)
-    %_8 = bitcast i8* %_7 to i32*
-    store i32 5, i32* %_8
-    %_9 = getelementptr i32, i32* %_8, i32 1
-    br label %label19
-
-label19:
-    %_10 = getelementptr i32, i32* %_9, i32 -1
-    %_11 = load i32, i32* %_10
-    %_12 = icmp ult i32 0, %_11
-    br i1 %_12, label %label14, label %label15
+    %_5 = load i32*, i32** %k
+    %_6 = getelementptr i32, i32* %_5, i32 -1
+    %_7 = load i32, i32* %_6
+    %_8 = icmp ult i32 2, %_7
+    br i1 %_8, label %label14, label %label15
 
 label14:
-    %_13 = getelementptr i32, i32* %_9, i32 0
-    %_14 = load i32, i32* %_13
+    %_9 = getelementptr i32, i32* %_5, i32 2
+    %_10 = load i32, i32* %_9
     br label %label16
 
 label15:
@@ -153,42 +138,30 @@ label15:
     br label %label16
 
 label16:
-    %_15 = icmp slt i32 %_14, 23
-    br i1 %_15, label %label10, label %label11
+    %_11 = icmp slt i32 %_10, 22
+    %_12 = zext i1 %_11 to i8
+    %_13 = trunc i8 %_12 to i1
+    br i1 %_13, label %label10, label %label11
 
 label10:
-    %_16 = icmp slt i32 5, 0
-    br i1 %_16, label %label23, label %label24
+    %_14 = load i32*, i32** %k
+    %_15 = getelementptr i32, i32* %_14, i32 -1
+    %_16 = load i32, i32* %_15
+    %_17 = icmp ult i32 2, %_16
+    br i1 %_17, label %label17, label %label18
 
-label23:
+label17:
+    %_18 = getelementptr i32, i32* %_14, i32 2
+    %_19 = load i32, i32* %_18
+    br label %label19
+
+label18:
     call void @throw_oob()
-    br label %label25
+    br label %label19
 
-label24:
-    %_17 = add i32 5, 1
-    %_18 = call i8* @calloc(i32 %_17, i32 4)
-    %_19 = bitcast i8* %_18 to i32*
-    store i32 5, i32* %_19
-    %_20 = getelementptr i32, i32* %_19, i32 1
-    br label %label25
-
-label25:
-    %_21 = getelementptr i32, i32* %_20, i32 -1
-    %_22 = load i32, i32* %_21
-    %_23 = icmp ult i32 0, %_22
-    br i1 %_23, label %label20, label %label21
-
-label20:
-    %_24 = getelementptr i32, i32* %_20, i32 0
-    %_25 = load i32, i32* %_24
-    br label %label22
-
-label21:
-    call void @throw_oob()
-    br label %label22
-
-label22:
-    %_26 = icmp slt i32 %_25, 23
+label19:
+    %_20 = icmp slt i32 %_19, 23
+    %_21 = zext i1 %_20 to i8
     br label %label12
 
 label12:
@@ -198,87 +171,61 @@ label11:
     br label %label13
 
 label13:
-    %_27 = phi i1 [%_26, %label12], [%_15, %label11]
-    br i1 %_27, label %label6, label %label7
+    %_22 = phi i8 [%_21, %label12], [%_12, %label11]
+    %_23 = trunc i8 %_22 to i1
+    br i1 %_23, label %label6, label %label7
 
 label6:
-    %_28 = icmp slt i32 5, 0
-    br i1 %_28, label %label33, label %label34
+    %_24 = load i32*, i32** %k
+    %_25 = getelementptr i32, i32* %_24, i32 -1
+    %_26 = load i32, i32* %_25
+    %_27 = icmp ult i32 2, %_26
+    br i1 %_27, label %label24, label %label25
 
-label33:
+label24:
+    %_28 = getelementptr i32, i32* %_24, i32 2
+    %_29 = load i32, i32* %_28
+    br label %label26
+
+label25:
     call void @throw_oob()
-    br label %label35
-
-label34:
-    %_29 = add i32 5, 1
-    %_30 = call i8* @calloc(i32 %_29, i32 4)
-    %_31 = bitcast i8* %_30 to i32*
-    store i32 5, i32* %_31
-    %_32 = getelementptr i32, i32* %_31, i32 1
-    br label %label35
-
-label35:
-    %_33 = getelementptr i32, i32* %_32, i32 -1
-    %_34 = load i32, i32* %_33
-    %_35 = icmp ult i32 0, %_34
-    br i1 %_35, label %label30, label %label31
-
-label30:
-    %_36 = getelementptr i32, i32* %_32, i32 0
-    %_37 = load i32, i32* %_36
-    br label %label32
-
-label31:
-    call void @throw_oob()
-    br label %label32
-
-label32:
-    %_38 = icmp slt i32 %_37, 23
-    br i1 %_38, label %label26, label %label27
+    br label %label26
 
 label26:
-    %_39 = icmp slt i32 5, 0
-    br i1 %_39, label %label39, label %label40
+    %_30 = icmp slt i32 %_29, 22
+    %_31 = zext i1 %_30 to i8
+    %_32 = trunc i8 %_31 to i1
+    br i1 %_32, label %label20, label %label21
 
-label39:
-    call void @throw_oob()
-    br label %label41
-
-label40:
-    %_40 = add i32 5, 1
-    %_41 = call i8* @calloc(i32 %_40, i32 4)
-    %_42 = bitcast i8* %_41 to i32*
-    store i32 5, i32* %_42
-    %_43 = getelementptr i32, i32* %_42, i32 1
-    br label %label41
-
-label41:
-    %_44 = getelementptr i32, i32* %_43, i32 -1
-    %_45 = load i32, i32* %_44
-    %_46 = icmp ult i32 0, %_45
-    br i1 %_46, label %label36, label %label37
-
-label36:
-    %_47 = getelementptr i32, i32* %_43, i32 0
-    %_48 = load i32, i32* %_47
-    br label %label38
-
-label37:
-    call void @throw_oob()
-    br label %label38
-
-label38:
-    %_49 = icmp slt i32 %_48, 23
-    br label %label28
-
-label28:
-    br label %label29
+label20:
+    %_33 = load i32*, i32** %k
+    %_34 = getelementptr i32, i32* %_33, i32 -1
+    %_35 = load i32, i32* %_34
+    %_36 = icmp ult i32 2, %_35
+    br i1 %_36, label %label27, label %label28
 
 label27:
+    %_37 = getelementptr i32, i32* %_33, i32 2
+    %_38 = load i32, i32* %_37
+    br label %label29
+
+label28:
+    call void @throw_oob()
     br label %label29
 
 label29:
-    %_50 = phi i1 [%_49, %label28], [%_38, %label27]
+    %_39 = icmp slt i32 %_38, 23
+    %_40 = zext i1 %_39 to i8
+    br label %label22
+
+label22:
+    br label %label23
+
+label21:
+    br label %label23
+
+label23:
+    %_41 = phi i8 [%_40, %label22], [%_31, %label21]
     br label %label8
 
 label8:
@@ -288,27 +235,28 @@ label7:
     br label %label9
 
 label9:
-    %_51 = phi i1 [%_50, %label8], [%_27, %label7]
-    br i1 %_51, label %label3, label %label4
+    %_42 = phi i8 [%_41, %label8], [%_22, %label7]
+    %_43 = trunc i8 %_42 to i1
+    br i1 %_43, label %label3, label %label4
 
 label3:
-    %_52 = getelementptr i8, i8* %this, i32 16
-    %_53 = bitcast i8* %_52 to i32*
-    store i32 1, i32* %_53
+    %_44 = getelementptr i8, i8* %this, i32 16
+    %_45 = bitcast i8* %_44 to i32*
+    store i32 1, i32* %_45
     br label %label5
 
 label4:
-    %_54 = getelementptr i8, i8* %this, i32 16
-    %_55 = bitcast i8* %_54 to i32*
-    store i32 0, i32* %_55
+    %_46 = getelementptr i8, i8* %this, i32 16
+    %_47 = bitcast i8* %_46 to i32*
+    store i32 0, i32* %_47
     br label %label5
 
 label5:
-    %_56 = getelementptr i8, i8* %this, i32 16
-    %_57 = bitcast i8* %_56 to i32*
-    %_58 = load i32, i32* %_57
+    %_48 = getelementptr i8, i8* %this, i32 16
+    %_49 = bitcast i8* %_48 to i32*
+    %_50 = load i32, i32* %_49
 
-    ret i32 %_58
+    ret i32 %_50
 }
 
 define i32 @B.foo(i8* %this) {
@@ -318,13 +266,13 @@ define i32 @B.foo(i8* %this) {
     ret i32 5
 }
 
-define i1 @B.bla(i8* %this, i32 %.i, i32 %.j) {
+define i8 @B.bla(i8* %this, i32 %.i, i32 %.j) {
     %i = alloca i32
     store i32 %.i, i32* %i
     %j = alloca i32
     store i32 %.j, i32* %j
 
-    ret i1 1
+    ret i8 1
 }
 
 define i32 @B.bar(i8* %this) {

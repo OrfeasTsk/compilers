@@ -104,7 +104,7 @@ public class FunInfo extends Info{
         if(this.type.equals("int"))
             return "i32";
         else if(this.type.equals("boolean"))
-            return "i1";
+            return "i8";
         else if(this.type.equals("int[]"))
             return "i32*";
         else
