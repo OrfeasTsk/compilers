@@ -1,6 +1,4 @@
 @.Main_vtable = global [0 x i8*] []
-@.A_vtable = global [2 x i8*] [i8* bitcast (i32 (i8*)* @A.foo to i8*), i8* bitcast (i8 (i8*)* @A.fa to i8*)]
-@.B_vtable = global [3 x i8*] [i8* bitcast (i32 (i8*)* @B.foo to i8*), i8* bitcast (i8 (i8*)* @A.fa to i8*), i8* bitcast (i8 (i8*)* @B.bla to i8*)]
 
 
 declare i8* @calloc(i32, i32)
@@ -23,29 +21,33 @@ define void @throw_oob() {
 }
 
 define i32 @main() { 
+    %b = alloca i32*
+    %_0 = call i8* @calloc(i32 0, i32 4)
+    %_1 = bitcast i8* %_0 to i32*
+    store i32* %_1, i32** %b
     %x = alloca i32
     store i32 0, i32* %x
+    %_2 = sub i32 1, 2
+    store i32 %_2, i32* %x
+    %_3 = load i32, i32* %x
+    %_4 = icmp slt i32 %_3, 0
+    br i1 %_4, label %label0, label %label1
+
+label0:
+    call void @throw_oob()
+    br label %label2
+
+label1:
+    %_5 = add i32 %_3, 1
+    %_6 = call i8* @calloc(i32 %_5, i32 4)
+    %_7 = bitcast i8* %_6 to i32*
+    store i32 %_3, i32* %_7
+    %_8 = getelementptr i32, i32* %_7, i32 1
+    br label %label2
+
+label2:
+    store i32* %_8, i32** %b
 
 
     ret i32 0
-}
-
-define i32 @A.foo(i8* %this) {
-
-    ret i32 0
-}
-
-define i8 @A.fa(i8* %this) {
-
-    ret i8 1
-}
-
-define i32 @B.foo(i8* %this) {
-
-    ret i32 0
-}
-
-define i8 @B.bla(i8* %this) {
-
-    ret i8 1
 }

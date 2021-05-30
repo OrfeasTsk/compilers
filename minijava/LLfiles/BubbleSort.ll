@@ -36,6 +36,7 @@ define i32 @main() {
     %_10 = call i32 %_9(i8* %_0, i32 10)
     call void (i32) @print_int(i32 %_10)
 
+
     ret i32 0
 }
 
@@ -43,6 +44,7 @@ define i32 @BBS.Start(i8* %this, i32 %.sz) {
     %sz = alloca i32
     store i32 %.sz, i32* %sz
     %aux01 = alloca i32
+    store i32 0, i32* %aux01
     %_0 = bitcast i8* %this to i8**
     %_1 = load i8*, i8** %_0
     %_2 = getelementptr i8, i8* %_1, i32 24
@@ -60,7 +62,8 @@ define i32 @BBS.Start(i8* %this, i32 %.sz) {
     %_13 = bitcast i8* %_12 to i32 (i8*)*
     %_14 = call i32 %_13(i8* %this)
     store i32 %_14, i32* %aux01
-    call void (i32) @print_int(i32 99999)    %_15 = bitcast i8* %this to i8**
+    call void (i32) @print_int(i32 99999)
+    %_15 = bitcast i8* %this to i8**
     %_16 = load i8*, i8** %_15
     %_17 = getelementptr i8, i8* %_16, i32 8
     %_18 = bitcast i8* %_17 to i8**
@@ -82,14 +85,23 @@ define i32 @BBS.Start(i8* %this, i32 %.sz) {
 
 define i32 @BBS.Sort(i8* %this) {
     %nt = alloca i32
+    store i32 0, i32* %nt
     %i = alloca i32
+    store i32 0, i32* %i
     %aux02 = alloca i32
+    store i32 0, i32* %aux02
     %aux04 = alloca i32
+    store i32 0, i32* %aux04
     %aux05 = alloca i32
+    store i32 0, i32* %aux05
     %aux06 = alloca i32
+    store i32 0, i32* %aux06
     %aux07 = alloca i32
+    store i32 0, i32* %aux07
     %j = alloca i32
+    store i32 0, i32* %j
     %t = alloca i32
+    store i32 0, i32* %t
     %_0 = getelementptr i8, i8* %this, i32 16
     %_1 = bitcast i8* %_0 to i32*
     %_2 = load i32, i32* %_1
@@ -103,35 +115,39 @@ label1:
     %_5 = load i32, i32* %aux02
     %_6 = load i32, i32* %i
     %_7 = icmp slt i32 %_5, %_6
-    br i1 %_7, label %label0, label %label2
+    %_8 = zext i1 %_7 to i8
+    %_9 = trunc i8 %_8 to i1
+    br i1 %_9, label %label0, label %label2
 
 label0:
     store i32 1, i32* %j
     br label %label4
 
 label4:
-    %_8 = load i32, i32* %j
-    %_9 = load i32, i32* %i
-    %_10 = add i32 %_9, 1
-    %_11 = icmp slt i32 %_8, %_10
-    br i1 %_11, label %label3, label %label5
+    %_10 = load i32, i32* %j
+    %_11 = load i32, i32* %i
+    %_12 = add i32 %_11, 1
+    %_13 = icmp slt i32 %_10, %_12
+    %_14 = zext i1 %_13 to i8
+    %_15 = trunc i8 %_14 to i1
+    br i1 %_15, label %label3, label %label5
 
 label3:
-    %_12 = load i32, i32* %j
-    %_13 = sub i32 %_12, 1
-    store i32 %_13, i32* %aux07
-    %_14 = getelementptr i8, i8* %this, i32 8
-    %_15 = bitcast i8* %_14 to i32**
-    %_16 = load i32*, i32** %_15
-    %_17 = load i32, i32* %aux07
-    %_18 = getelementptr i32, i32* %_16, i32 -1
-    %_19 = load i32, i32* %_18
-    %_20 = icmp ult i32 %_17, %_19
-    br i1 %_20, label %label6, label %label7
+    %_16 = load i32, i32* %j
+    %_17 = sub i32 %_16, 1
+    store i32 %_17, i32* %aux07
+    %_18 = getelementptr i8, i8* %this, i32 8
+    %_19 = bitcast i8* %_18 to i32**
+    %_20 = load i32*, i32** %_19
+    %_21 = load i32, i32* %aux07
+    %_22 = getelementptr i32, i32* %_20, i32 -1
+    %_23 = load i32, i32* %_22
+    %_24 = icmp ult i32 %_21, %_23
+    br i1 %_24, label %label6, label %label7
 
 label6:
-    %_21 = getelementptr i32, i32* %_16, i32 %_17
-    %_22 = load i32, i32* %_21
+    %_25 = getelementptr i32, i32* %_20, i32 %_21
+    %_26 = load i32, i32* %_25
     br label %label8
 
 label7:
@@ -139,19 +155,19 @@ label7:
     br label %label8
 
 label8:
-    store i32 %_22, i32* %aux04
-    %_23 = getelementptr i8, i8* %this, i32 8
-    %_24 = bitcast i8* %_23 to i32**
-    %_25 = load i32*, i32** %_24
-    %_26 = load i32, i32* %j
-    %_27 = getelementptr i32, i32* %_25, i32 -1
-    %_28 = load i32, i32* %_27
-    %_29 = icmp ult i32 %_26, %_28
-    br i1 %_29, label %label9, label %label10
+    store i32 %_26, i32* %aux04
+    %_27 = getelementptr i8, i8* %this, i32 8
+    %_28 = bitcast i8* %_27 to i32**
+    %_29 = load i32*, i32** %_28
+    %_30 = load i32, i32* %j
+    %_31 = getelementptr i32, i32* %_29, i32 -1
+    %_32 = load i32, i32* %_31
+    %_33 = icmp ult i32 %_30, %_32
+    br i1 %_33, label %label9, label %label10
 
 label9:
-    %_30 = getelementptr i32, i32* %_25, i32 %_26
-    %_31 = load i32, i32* %_30
+    %_34 = getelementptr i32, i32* %_29, i32 %_30
+    %_35 = load i32, i32* %_34
     br label %label11
 
 label10:
@@ -159,28 +175,30 @@ label10:
     br label %label11
 
 label11:
-    store i32 %_31, i32* %aux05
-    %_32 = load i32, i32* %aux05
-    %_33 = load i32, i32* %aux04
-    %_34 = icmp slt i32 %_32, %_33
-    br i1 %_34, label %label12, label %label13
+    store i32 %_35, i32* %aux05
+    %_36 = load i32, i32* %aux05
+    %_37 = load i32, i32* %aux04
+    %_38 = icmp slt i32 %_36, %_37
+    %_39 = zext i1 %_38 to i8
+    %_40 = trunc i8 %_39 to i1
+    br i1 %_40, label %label12, label %label13
 
 label12:
-    %_35 = load i32, i32* %j
-    %_36 = sub i32 %_35, 1
-    store i32 %_36, i32* %aux06
-    %_37 = getelementptr i8, i8* %this, i32 8
-    %_38 = bitcast i8* %_37 to i32**
-    %_39 = load i32*, i32** %_38
-    %_40 = load i32, i32* %aux06
-    %_41 = getelementptr i32, i32* %_39, i32 -1
-    %_42 = load i32, i32* %_41
-    %_43 = icmp ult i32 %_40, %_42
-    br i1 %_43, label %label15, label %label16
+    %_41 = load i32, i32* %j
+    %_42 = sub i32 %_41, 1
+    store i32 %_42, i32* %aux06
+    %_43 = getelementptr i8, i8* %this, i32 8
+    %_44 = bitcast i8* %_43 to i32**
+    %_45 = load i32*, i32** %_44
+    %_46 = load i32, i32* %aux06
+    %_47 = getelementptr i32, i32* %_45, i32 -1
+    %_48 = load i32, i32* %_47
+    %_49 = icmp ult i32 %_46, %_48
+    br i1 %_49, label %label15, label %label16
 
 label15:
-    %_44 = getelementptr i32, i32* %_39, i32 %_40
-    %_45 = load i32, i32* %_44
+    %_50 = getelementptr i32, i32* %_45, i32 %_46
+    %_51 = load i32, i32* %_50
     br label %label17
 
 label16:
@@ -188,30 +206,30 @@ label16:
     br label %label17
 
 label17:
-    store i32 %_45, i32* %t
-    %_46 = getelementptr i8, i8* %this, i32 8
-    %_47 = bitcast i8* %_46 to i32**
-    %_48 = load i32*, i32** %_47
-    %_49 = load i32, i32* %aux06
-    %_50 = getelementptr i32, i32* %_48, i32 -1
-    %_51 = load i32, i32* %_50
-    %_52 = icmp ult i32 %_49, %_51
-    br i1 %_52, label %label18, label %label19
+    store i32 %_51, i32* %t
+    %_52 = getelementptr i8, i8* %this, i32 8
+    %_53 = bitcast i8* %_52 to i32**
+    %_54 = load i32*, i32** %_53
+    %_55 = load i32, i32* %aux06
+    %_56 = getelementptr i32, i32* %_54, i32 -1
+    %_57 = load i32, i32* %_56
+    %_58 = icmp ult i32 %_55, %_57
+    br i1 %_58, label %label18, label %label19
 
 label18:
-    %_53 = getelementptr i32, i32* %_48, i32 %_49
-    %_54 = getelementptr i8, i8* %this, i32 8
-    %_55 = bitcast i8* %_54 to i32**
-    %_56 = load i32*, i32** %_55
-    %_57 = load i32, i32* %j
-    %_58 = getelementptr i32, i32* %_56, i32 -1
-    %_59 = load i32, i32* %_58
-    %_60 = icmp ult i32 %_57, %_59
-    br i1 %_60, label %label21, label %label22
+    %_59 = getelementptr i32, i32* %_54, i32 %_55
+    %_60 = getelementptr i8, i8* %this, i32 8
+    %_61 = bitcast i8* %_60 to i32**
+    %_62 = load i32*, i32** %_61
+    %_63 = load i32, i32* %j
+    %_64 = getelementptr i32, i32* %_62, i32 -1
+    %_65 = load i32, i32* %_64
+    %_66 = icmp ult i32 %_63, %_65
+    br i1 %_66, label %label21, label %label22
 
 label21:
-    %_61 = getelementptr i32, i32* %_56, i32 %_57
-    %_62 = load i32, i32* %_61
+    %_67 = getelementptr i32, i32* %_62, i32 %_63
+    %_68 = load i32, i32* %_67
     br label %label23
 
 label22:
@@ -219,7 +237,7 @@ label22:
     br label %label23
 
 label23:
-    store i32 %_62, i32* %_53
+    store i32 %_68, i32* %_59
     br label %label20
 
 label19:
@@ -227,19 +245,19 @@ label19:
     br label %label20
 
 label20:
-    %_63 = getelementptr i8, i8* %this, i32 8
-    %_64 = bitcast i8* %_63 to i32**
-    %_65 = load i32*, i32** %_64
-    %_66 = load i32, i32* %j
-    %_67 = getelementptr i32, i32* %_65, i32 -1
-    %_68 = load i32, i32* %_67
-    %_69 = icmp ult i32 %_66, %_68
-    br i1 %_69, label %label24, label %label25
+    %_69 = getelementptr i8, i8* %this, i32 8
+    %_70 = bitcast i8* %_69 to i32**
+    %_71 = load i32*, i32** %_70
+    %_72 = load i32, i32* %j
+    %_73 = getelementptr i32, i32* %_71, i32 -1
+    %_74 = load i32, i32* %_73
+    %_75 = icmp ult i32 %_72, %_74
+    br i1 %_75, label %label24, label %label25
 
 label24:
-    %_70 = getelementptr i32, i32* %_65, i32 %_66
-    %_71 = load i32, i32* %t
-    store i32 %_71, i32* %_70
+    %_76 = getelementptr i32, i32* %_71, i32 %_72
+    %_77 = load i32, i32* %t
+    store i32 %_77, i32* %_76
     br label %label26
 
 label25:
@@ -254,15 +272,15 @@ label13:
     br label %label14
 
 label14:
-    %_72 = load i32, i32* %j
-    %_73 = add i32 %_72, 1
-    store i32 %_73, i32* %j
+    %_78 = load i32, i32* %j
+    %_79 = add i32 %_78, 1
+    store i32 %_79, i32* %j
     br label %label4
 
 label5:
-    %_74 = load i32, i32* %i
-    %_75 = sub i32 %_74, 1
-    store i32 %_75, i32* %i
+    %_80 = load i32, i32* %i
+    %_81 = sub i32 %_80, 1
+    store i32 %_81, i32* %i
     br label %label1
 
 label2:
@@ -273,6 +291,7 @@ label2:
 define i32 @BBS.Print(i8* %this) {
     %j = alloca i32
     store i32 0, i32* %j
+    store i32 0, i32* %j
     br label %label1
 
 label1:
@@ -281,21 +300,23 @@ label1:
     %_2 = bitcast i8* %_1 to i32*
     %_3 = load i32, i32* %_2
     %_4 = icmp slt i32 %_0, %_3
-    br i1 %_4, label %label0, label %label2
+    %_5 = zext i1 %_4 to i8
+    %_6 = trunc i8 %_5 to i1
+    br i1 %_6, label %label0, label %label2
 
 label0:
-    %_5 = getelementptr i8, i8* %this, i32 8
-    %_6 = bitcast i8* %_5 to i32**
-    %_7 = load i32*, i32** %_6
-    %_8 = load i32, i32* %j
-    %_9 = getelementptr i32, i32* %_7, i32 -1
-    %_10 = load i32, i32* %_9
-    %_11 = icmp ult i32 %_8, %_10
-    br i1 %_11, label %label3, label %label4
+    %_7 = getelementptr i8, i8* %this, i32 8
+    %_8 = bitcast i8* %_7 to i32**
+    %_9 = load i32*, i32** %_8
+    %_10 = load i32, i32* %j
+    %_11 = getelementptr i32, i32* %_9, i32 -1
+    %_12 = load i32, i32* %_11
+    %_13 = icmp ult i32 %_10, %_12
+    br i1 %_13, label %label3, label %label4
 
 label3:
-    %_12 = getelementptr i32, i32* %_7, i32 %_8
-    %_13 = load i32, i32* %_12
+    %_14 = getelementptr i32, i32* %_9, i32 %_10
+    %_15 = load i32, i32* %_14
     br label %label5
 
 label4:
@@ -303,9 +324,10 @@ label4:
     br label %label5
 
 label5:
-    call void (i32) @print_int(i32 %_13)    %_14 = load i32, i32* %j
-    %_15 = add i32 %_14, 1
-    store i32 %_15, i32* %j
+    call void (i32) @print_int(i32 %_15)
+    %_16 = load i32, i32* %j
+    %_17 = add i32 %_16, 1
+    store i32 %_17, i32* %j
     br label %label1
 
 label2:
@@ -332,9 +354,9 @@ label0:
 
 label1:
     %_7 = add i32 %_5, 1
-    %_8 = call i8* @calloc(i32 4, i32 %_7)
+    %_8 = call i8* @calloc(i32 %_7, i32 4)
     %_9 = bitcast i8* %_8 to i32*
-    store i32 %_7, i32* %_9
+    store i32 %_5, i32* %_9
     %_10 = getelementptr i32, i32* %_9, i32 1
     br label %label2
 

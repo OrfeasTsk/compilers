@@ -23,8 +23,6 @@ define void @throw_oob() {
 }
 
 define i32 @main() { 
-    %x = alloca i32
-    store i32 0, i32* %x
 
 
     ret i32 0
@@ -32,17 +30,17 @@ define i32 @main() {
 
 define i32 @A.foo(i8* %this) {
 
-    ret i32 0
+    ret i32 1
 }
 
 define i8 @A.fa(i8* %this) {
 
-    ret i8 1
+    ret i8 0
 }
 
 define i32 @B.foo(i8* %this) {
 
-    ret i32 0
+    ret i32 2
 }
 
 define i8 @B.bla(i8* %this) {
